@@ -1,6 +1,6 @@
 Generate 200,000 records
 Customer Gen Data:
-id: unique number between 1 and 200,000, do not repeat
+customer_id: unique number between 1 and 200,000, do not repeat
 clv_decile:between 1 and 10 (10% of the total for each value)
 churn_risk is either 0 or 1 (with 2% of subscribers being 1)
 current_bb_speed:the current broadband speed, speeds below 500mb, is considered as "Copper" - that will
