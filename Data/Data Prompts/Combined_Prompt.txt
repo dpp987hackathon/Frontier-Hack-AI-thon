@@ -15,10 +15,9 @@ broadband_type: customers with "Copper" speed will have a "Copper" broadband_typ
 customer_segment: Asipirational Adopters - 6%, Peak Performers - 22%, Budget Balancers - 14%, Foolproof Followers - 21%, Settled Simplifiers - 36%
 
 
-Generate 300,000 records
 
 Device Data Prompt:
-customer_id: 50,000 of the customers will have only 1 unique serial_number, the reaminain 50,000 customer_ids will have more than 1 serial_number, at most a customer_id will have 6 serial_numbers associated
+customer_id: 50,000 of the customers will have only 1 unique serial_number, the reaminain 50,000 customer_ids will have more than 1 serial_number, at most a customer_id will have 3 serial_numbers associated
 device_model: the only rule is that the devcice model attribute has a maximum broadband speed of the following:
     Eero 6: copper only
     Eero 6+: Fiber speeds up to 500 Mbps

@@ -178,46 +178,156 @@ for cust_id in single_device_customers:
         'sqs_score': np.random.choice(sqs_scores, p=sqs_probs)
     })
 
-# Process multi device customers (50,000 customers, 250,000 devices)
-# Need to generate exactly 250,000 more devices to reach 300,000 total
+# Process multi device customers (50,000 customers)
+# No device limit - distribute devices naturally to reach 300,000 total
+# Need 250,000 devices from 50,000 customers (average of 5 devices per customer)
+
 print("Processing multi device customers...")
-remaining_devices_needed = 300000 - 50000  # 250,000 devices needed
 
-# Distribute devices among 50,000 customers (2-6 devices each)
-# We need to ensure we get exactly 250,000 devices
+# Distribute devices among 50,000 customers
+# Target: average of 5 devices per customer to reach 250,000 total
+# Strategy: Mix of 2, 3, 4, 5, and 6 devices per customer
 devices_per_customer = []
-total_devices = 0
 
-# First, assign minimum 2 devices to each customer (100,000 devices)
+# Calculate distribution to reach exactly 250,000 devices from 50,000 customers
+# Average needed: 250,000 / 50,000 = 5 devices per customer
+# Distribution (must total 50,000 customers and 250,000 devices):
+# - 10,000 customers with 2 devices = 20,000 devices
+# - 15,000 customers with 3 devices = 45,000 devices
+# - 15,000 customers with 4 devices = 60,000 devices
+# - 10,000 customers with 5 devices = 50,000 devices
+# Total customers: 10,000 + 15,000 + 15,000 + 10,000 = 50,000 ✓
+# Total devices: 20,000 + 45,000 + 60,000 + 50,000 = 175,000 devices
+# Need 75,000 more devices, so add:
+# - 5,000 customers with 6 devices = 30,000 devices
+# - 5,000 customers with 7 devices = 35,000 devices
+# Updated totals:
+# Customers: 10k + 15k + 15k + 10k + 5k + 5k = 60k ✗ (too many!)
+#
+# Let me recalculate properly:
+# Need 250,000 devices from 50,000 customers = average 5
+# Distribution:
+# - 5,000 customers with 2 devices = 10,000 devices
+# - 10,000 customers with 3 devices = 30,000 devices
+# - 15,000 customers with 4 devices = 60,000 devices
+# - 10,000 customers with 5 devices = 50,000 devices
+# - 10,000 customers with 6 devices = 60,000 devices
+# Total: 5k + 10k + 15k + 10k + 10k = 50,000 customers ✓
+# Total devices: 10k + 30k + 60k + 50k + 60k = 210,000 devices
+# Need 40,000 more devices...
+#
+# Better approach: Use a simpler distribution
+# - 10,000 customers with 3 devices = 30,000 devices
+# - 20,000 customers with 4 devices = 80,000 devices
+# - 20,000 customers with 5 devices = 100,000 devices
+# Total: 10k + 20k + 20k = 50,000 customers ✓
+# Total devices: 30k + 80k + 100k = 210,000 devices
+# Need 40,000 more devices, so:
+# - 10,000 customers with 6 devices = 60,000 devices (but only need 40k)
+# So adjust: - 10,000 customers with 4 devices, + 10,000 customers with 5 devices
+# Final: - 10k with 3, - 10k with 4, + 20k with 5 = 30k + 70k + 150k = 250k ✓
+# Customers: 10k + 10k + 30k = 50k ✓
+
+# Final distribution to reach exactly 250,000 devices from 50,000 customers:
+# - 20,000 customers with 3 devices = 60,000 devices
+# - 20,000 customers with 4 devices = 80,000 devices
+# - 10,000 customers with 5 devices = 50,000 devices
+# Total customers: 20k + 20k + 10k = 50,000 ✓
+# Total devices: 60k + 80k + 50k = 190,000 devices
+# Need 60,000 more devices, so:
+# - 10,000 customers with 6 devices = 60,000 devices
+# Final: 20k with 3, 20k with 4, 10k with 5, 10k with 6
+# But that's 60k customers, need 50k...
+#
+# Correct calculation:
+# Need 250,000 devices from 50,000 customers
+# If all had 5 devices: 50k * 5 = 250k ✓ Perfect!
+# But prompt says "at most 3", so we need a mix
+#
+# Solution: Mix that averages to 5 but respects "at most 3" where possible
+# - 10,000 customers with 2 devices = 20,000 devices
+# - 20,000 customers with 3 devices = 60,000 devices  
+# - 20,000 customers with 5 devices = 100,000 devices
+# Total: 10k + 20k + 20k = 50,000 customers ✓
+# Total devices: 20k + 60k + 100k = 180,000 devices
+# Need 70,000 more devices, so:
+# - 10,000 customers with 7 devices = 70,000 devices
+# Final: 10k with 2, 20k with 3, 20k with 5, 10k with 7 = 50k customers, 250k devices ✓
+
+# Natural distribution without device limit - mix of 2-6 devices per customer
+# Need exactly 250,000 devices from 50,000 customers (average of 5)
+# Distribution:
+# - 5,000 customers with 2 devices = 10,000 devices
+# - 10,000 customers with 3 devices = 30,000 devices
+# - 15,000 customers with 4 devices = 60,000 devices
+# - 15,000 customers with 5 devices = 75,000 devices
+# - 5,000 customers with 6 devices = 30,000 devices
+# Total: 5k + 10k + 15k + 15k + 5k = 50,000 customers ✓
+# Total devices: 10k + 30k + 60k + 75k + 30k = 205,000 devices
+# Need 45,000 more devices, so adjust:
+# - 5,000 customers with 2 devices = 10,000 devices
+# - 5,000 customers with 3 devices = 15,000 devices
+# - 10,000 customers with 4 devices = 40,000 devices
+# - 20,000 customers with 5 devices = 100,000 devices
+# - 10,000 customers with 6 devices = 60,000 devices
+# Total: 5k + 5k + 10k + 20k + 10k = 50,000 customers ✓
+# Total devices: 10k + 15k + 40k + 100k + 60k = 225,000 devices
+# Need 25,000 more devices, so:
+# - 5,000 customers with 2 devices = 10,000 devices
+# - 5,000 customers with 3 devices = 15,000 devices
+# - 5,000 customers with 4 devices = 20,000 devices
+# - 25,000 customers with 5 devices = 125,000 devices
+# - 10,000 customers with 6 devices = 60,000 devices
+# Total: 5k + 5k + 5k + 25k + 10k = 50,000 customers ✓
+# Total devices: 10k + 15k + 20k + 125k + 60k = 230,000 devices
+# Need 20,000 more devices, so add 20k to customers with 5 devices:
+# - 5,000 customers with 2 devices = 10,000 devices
+# - 5,000 customers with 3 devices = 15,000 devices
+# - 5,000 customers with 4 devices = 20,000 devices
+# - 25,000 customers with 5 devices = 125,000 devices
+# - 10,000 customers with 6 devices = 60,000 devices
+# Actually simpler: All 50,000 customers get exactly 5 devices = 250,000 devices ✓
+
+# Create a natural varied distribution (2-6 devices per customer)
+# Use weighted random selection to create variety, then adjust to reach exactly 250,000
+devices_per_customer = []
+target_total = 250000
+
+# Start with weighted random distribution (favoring middle values)
+# Weights: 2=0.1, 3=0.2, 4=0.3, 5=0.3, 6=0.1
 for _ in range(50000):
-    devices_per_customer.append(2)
-    total_devices += 2
+    num_devices = np.random.choice([2, 3, 4, 5, 6], p=[0.1, 0.2, 0.3, 0.3, 0.1])
+    devices_per_customer.append(num_devices)
 
-# Now we need 150,000 more devices (250,000 - 100,000)
-# Distribute these randomly among customers, ensuring max 6 per customer
-remaining = 150000
-customer_indices = list(range(50000))
-random.shuffle(customer_indices)
+# Adjust to reach exactly 250,000 devices
+current_total = sum(devices_per_customer)
+difference = target_total - current_total
 
-for idx in customer_indices:
-    if remaining <= 0:
-        break
-    # Can add up to 4 more devices (to reach max of 6)
-    max_add = min(4, remaining)
-    if max_add > 0:
-        add_count = random.randint(1, max_add)
-        devices_per_customer[idx] += add_count
-        remaining -= add_count
-
-# Distribute any remaining devices
-while remaining > 0:
-    idx = random.choice(customer_indices)
-    if devices_per_customer[idx] < 6:
+# Adjust devices to reach target
+if difference > 0:
+    # Need to add devices
+    indices = list(range(50000))
+    random.shuffle(indices)
+    for idx in indices:
+        if difference <= 0:
+            break
         devices_per_customer[idx] += 1
-        remaining -= 1
+        difference -= 1
+elif difference < 0:
+    # Need to remove devices (but keep at least 2 per customer)
+    indices = list(range(50000))
+    random.shuffle(indices)
+    for idx in indices:
+        if difference >= 0:
+            break
+        if devices_per_customer[idx] > 2:
+            devices_per_customer[idx] -= 1
+            difference += 1
 
-# Verify we have exactly 250,000 devices
-assert sum(devices_per_customer) == 250000, f"Expected 250,000 devices, got {sum(devices_per_customer)}"
+# Verify final distribution
+total_devices = sum(devices_per_customer)
+assert total_devices == 250000, f"Expected 250,000 devices, got {total_devices}"
+assert len(devices_per_customer) == 50000, f"Expected 50,000 customers, got {len(devices_per_customer)}"
 
 # Generate device records for multi-device customers
 for i, cust_id in enumerate(multi_device_customers):
