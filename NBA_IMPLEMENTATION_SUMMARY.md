@@ -131,6 +131,20 @@ Successfully added **Next Best Action** functionality to your D3.js dashboard wi
 - First 100 results displayed for performance
 - Alternating row colors for readability
 
+#### 5. **CSV Download** (NEW!)
+Export filtered data to CSV format:
+
+**CSV Download (📥 Green Button)**
+- Exports ALL filtered records (no limit)
+- Includes 13 data fields:
+  - Customer ID, Next Best Action, Customer Segment
+  - CLV Decile, Churn Risk, SQS Score
+  - Broadband Type, Current Speed, Network Activity
+  - Account Tenure, Device Model, Device Status, ISP
+- Auto-generates filename with filter and timestamp
+- Perfect for Excel analysis or CRM import
+- Example: `next_best_action_Ship_new_device_2025-11-17T15-30-45.csv`
+
 ---
 
 ## 🚀 How to Use
@@ -184,6 +198,13 @@ Click the **"Next Best Action"** tab button
 - Type in the **Search box** to find specific Customer IDs
 - Review the **bar chart** to understand distribution
 - Examine the **table** for detailed customer information
+
+### Step 6: Export Data (NEW!)
+- Click **📥 Download CSV** for complete dataset export
+  - All filtered records included
+  - Opens in Excel/Sheets automatically
+  - Use for bulk imports or further analysis
+  - Perfect for campaigns, reports, and data analysis
 
 ---
 
@@ -355,13 +376,14 @@ Interactive Dashboard with visualizations
 
 | File | Lines | Purpose |
 |------|-------|---------|
-| `index.html` | 949 | Main dashboard with D3 visualizations |
+| `index.html` | 1,048 | Main dashboard with D3 visualizations + CSV download |
 | `server.py` | 54 | Python HTTP server |
 | `generate_nba_data.py` | 118 | NBA data generator |
 | `nba_data.csv` | 300,001 | Customer recommendations |
-| `D3_DASHBOARD_README.md` | 298 | Complete documentation |
+| `D3_DASHBOARD_README.md` | 300 | Complete documentation |
 
-**Total Lines of Code Added:** ~400 (JavaScript + Python)
+**Total Lines of Code Added:** ~470 (JavaScript + Python)
+**Download Feature Added:** ~60 lines (CSV export)
 
 ---
 
@@ -375,6 +397,7 @@ Interactive Dashboard with visualizations
 ✅ Interactive filtering functional  
 ✅ Search functionality working  
 ✅ Color-coded priority system  
+✅ CSV download capability  
 ✅ Responsive design maintained  
 ✅ Documentation updated  
 ✅ Performance optimized  

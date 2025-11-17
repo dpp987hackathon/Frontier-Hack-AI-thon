@@ -250,6 +250,35 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
 
+        .download-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #28a745;
+            color: white;
+            margin-bottom: 15px;
+        }
+
+        .download-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            background: #218838;
+        }
+
+        .download-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
         @media (max-width: 768px) {
             .visualization-grid {
                 grid-template-columns: 1fr;
@@ -351,6 +380,10 @@
                         <input type="text" id="customer-search" placeholder="Search by Customer ID..." 
                                style="width: 100%; padding: 10px; border-radius: 5px; border: 1px solid #ddd; font-size: 1em;">
                     </div>
+                    <button class="download-btn" onclick="downloadCSV()">
+                        <span>📥</span>
+                        <span>Download CSV</span>
+                    </button>
                     <div id="customer-table" style="overflow-x: auto; max-height: 600px; overflow-y: auto;"></div>
                 </div>
             </div>
@@ -941,6 +974,72 @@
             `;
 
             container.innerHTML = html;
+        }
+
+        // ========== Download Function ==========
+
+        function downloadCSV() {
+            const filtered = getFilteredNBAData();
+            
+            if (filtered.length === 0) {
+                alert('No data to download. Please adjust your filters.');
+                return;
+            }
+
+            // Prepare CSV content
+            const headers = [
+                'Customer ID',
+                'Next Best Action',
+                'Customer Segment',
+                'CLV Decile',
+                'Churn Risk',
+                'SQS Score',
+                'Broadband Type',
+                'Current Speed',
+                'Network Activity',
+                'Account Tenure',
+                'Device Model',
+                'Device Status',
+                'ISP'
+            ];
+
+            let csvContent = headers.join(',') + '\n';
+
+            filtered.forEach(d => {
+                const row = [
+                    d.customer_id,
+                    `"${d.next_best_action}"`,
+                    `"${d.customer_segment}"`,
+                    d.clv_decile,
+                    d.churn_risk,
+                    d.sqs_score,
+                    d.broadband_type,
+                    d.current_bb_speed,
+                    d.network_activity,
+                    d.account_tenure,
+                    `"${d.device_model}"`,
+                    `"${d.device_status}"`,
+                    `"${d.isp}"`
+                ];
+                csvContent += row.join(',') + '\n';
+            });
+
+            // Create download link
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            
+            const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+            const filename = `next_best_action_${selectedAction.replace(/ /g, '_')}_${timestamp}.csv`;
+            
+            link.setAttribute('href', url);
+            link.setAttribute('download', filename);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            console.log(`Downloaded ${filtered.length} records to ${filename}`);
         }
     </script>
 </body>

@@ -38,7 +38,8 @@ Click the **"Next Best Action"** tab to see your customer recommendations!
 
 1. **Filter by Action**: Use the dropdown to see specific recommendation types
 2. **Search Customers**: Type Customer ID in the search box
-3. **Export Data**: Table shows first 100 results - filter to get specific lists
+3. **Download Data**: Export filtered results as CSV
+   - 📥 **CSV**: Complete dataset with all records, perfect for Excel/analysis
 4. **Color Codes**:
    - 🔴 Red = Urgent (ship device)
    - 🟢 Green = High value (upgrade + device)

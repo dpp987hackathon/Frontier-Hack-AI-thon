@@ -61,6 +61,13 @@ An interactive web-based dashboard built with D3.js for analyzing device data wi
   - Broadband type, speed, device model
   - First 100 results displayed for performance
 
+- **CSV Download**: Export filtered data
+  - Complete dataset with all filtered records
+  - Includes all 13 data fields
+  - Perfect for Excel analysis or CRM import
+  - Filename includes filter type and timestamp
+  - Example: `next_best_action_All_Actions_2025-11-17T15-30-45.csv`
+
 ## Quick Start
 
 ### Method 1: Using the Batch File (Easiest - Windows)
@@ -187,6 +194,8 @@ The dashboard applies intelligent business rules to determine customer dispositi
    - **Customer Search**: Search by Customer ID in real-time
    - **Color-Coded Table**: Visual priority indicators
    - **Interactive Bar Chart**: Hover for animations
+   - **Download Button**: 
+     - 📥 CSV: Download complete filtered dataset
 
 ## Technology Stack
 
