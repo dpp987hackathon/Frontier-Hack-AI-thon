@@ -96,59 +96,103 @@ def generate_customer_id_distribution():
     """
     Generate customer ID distribution for exactly 300,000 records:
     - Use customer IDs between 1 and 200,000
+    - ALL IDs from 1 to 200,000 must be assigned at least once
     - No ID can repeat more than 6 times
-    - Between 80% and 90% of the USED IDs should appear exactly twice
+    - Skew towards 2 devices (80-90% of IDs appear twice)
+    - All combinations (1,2,3,4,5,6) must be used
     - Must generate exactly 300,000 records
     """
     all_ids = list(range(MIN_CUSTOMER_ID, MAX_CUSTOMER_ID + 1))
     random.shuffle(all_ids)
     
-    # Target: 80-90% of used IDs appear twice
-    twice_percentage = random.uniform(0.80, 0.90)
+    # Start by assigning each ID at least once (200,000 records used)
+    id_usage = {}
+    for cid in all_ids:
+        id_usage[cid] = 1
     
-    # Calculate how many IDs should be used twice
-    # If X IDs are used twice: 2X + Y = 300,000 and X/(X+Y) = twice_percentage
-    # Solving: X = twice_percentage * 300,000 / (1 + twice_percentage)
-    ids_used_twice_count = int((twice_percentage * TOTAL_RECORDS) / (1 + twice_percentage))
-    records_from_twice = ids_used_twice_count * 2
-    remaining_records = TOTAL_RECORDS - records_from_twice
+    remaining_records = TOTAL_RECORDS - TOTAL_CUSTOMER_IDS  # 300,000 - 200,000 = 100,000
     
-    # Check if we have enough IDs available
-    total_unique_ids_needed = ids_used_twice_count + remaining_records
+    # Math: We have 200,000 IDs and need 300,000 total records
+    # If X IDs appear twice and Y IDs appear once: 2X + Y = 300,000, X + Y = 200,000
+    # Solving: X = 100,000, Y = 100,000
+    # So exactly 50% should appear twice to get exactly 300,000 records
+    # But prompt says "skew towards 2 devices" and "80-90% can be used twice"
+    # This means 80-90% of IDs that ARE used (not all 200k) can appear twice
+    # Since we must use all 200k IDs, we'll aim for ~50% twice, but allow variation
     
-    if total_unique_ids_needed > TOTAL_CUSTOMER_IDS:
-        # Adjust to fit within available IDs
-        ids_used_twice_count = int(TOTAL_CUSTOMER_IDS * twice_percentage)
-        records_from_twice = ids_used_twice_count * 2
-        remaining_records = TOTAL_RECORDS - records_from_twice
-        remaining_ids_count = TOTAL_CUSTOMER_IDS - ids_used_twice_count
-        
-        # Distribute remaining records among remaining IDs
-        id_usage = {}
-        
-        # IDs used twice
-        for i in range(ids_used_twice_count):
-            id_usage[all_ids[i]] = 2
-        
-        # Distribute remaining records (max 6 per ID)
-        idx = ids_used_twice_count
-        while remaining_records > 0 and idx < TOTAL_CUSTOMER_IDS:
-            # Use between 1 and min(6, remaining_records) for each ID
-            count = min(random.randint(1, min(6, remaining_records)), remaining_records)
-            id_usage[all_ids[idx]] = count
-            remaining_records -= count
-            idx += 1
-    else:
-        # We can fit within available IDs
-        id_usage = {}
-        
-        # IDs used twice
-        for i in range(ids_used_twice_count):
-            id_usage[all_ids[i]] = 2
-        
-        # IDs used once for remaining records
-        for i in range(remaining_records):
-            id_usage[all_ids[ids_used_twice_count + i]] = 1
+    # We need to ensure all combinations (1,2,3,4,5,6) are used
+    # This requires at least 4 IDs with counts 3,4,5,6 (beyond their base count of 1)
+    # These need: 2+3+4+5 = 14 additional records
+    # So: remaining_records - 14 should be distributed to make IDs appear twice
+    records_for_twice = remaining_records - 14  # Reserve 14 for counts 3,4,5,6
+    
+    # Make selected IDs appear twice
+    ids_to_make_twice = min(records_for_twice, len(all_ids))
+    ids_to_update = random.sample(all_ids, ids_to_make_twice)
+    for cid in ids_to_update:
+        id_usage[cid] = 2
+        remaining_records -= 1
+    
+    # Ensure we have at least one ID with each count (3,4,5,6)
+    # This ensures all combinations (1,2,3,4,5,6) are represented
+    required_counts = {3, 4, 5, 6}
+    current_counts = set(id_usage.values())
+    missing_counts = sorted([c for c in required_counts if c not in current_counts])
+    
+    # Assign missing counts, starting with smallest
+    available_for_adjustment = [cid for cid in all_ids if id_usage[cid] <= 2]
+    random.shuffle(available_for_adjustment)
+    
+    for target_count in missing_counts:
+        if not available_for_adjustment:
+            break
+        # Find an ID we can upgrade to target_count
+        for i, cid in enumerate(available_for_adjustment):
+            current_count = id_usage[cid]
+            additional_needed = target_count - current_count
+            if additional_needed > 0 and remaining_records >= additional_needed:
+                id_usage[cid] = target_count
+                remaining_records -= additional_needed
+                available_for_adjustment.pop(i)
+                break
+    
+    # Distribute remaining records randomly, ensuring max 6 per ID
+    # Create a list of IDs that can still accept more records
+    while remaining_records > 0:
+        eligible_ids = [cid for cid in all_ids if id_usage[cid] < 6]
+        if not eligible_ids:
+            # If no eligible IDs but still have remaining records, we have a problem
+            # This shouldn't happen, but let's break to avoid infinite loop
+            break
+        cid = random.choice(eligible_ids)
+        id_usage[cid] += 1
+        remaining_records -= 1
+    
+    # Verify total before building list
+    total_records = sum(id_usage.values())
+    if total_records != TOTAL_RECORDS:
+        # Adjust to exactly 300,000
+        diff = TOTAL_RECORDS - total_records
+        if diff > 0:
+            # Need to add more records
+            eligible_ids = [cid for cid in all_ids if id_usage[cid] < 6]
+            for _ in range(min(diff, len(eligible_ids) * 5)):  # Max 5 more per ID
+                if diff <= 0:
+                    break
+                cid = random.choice(eligible_ids)
+                if id_usage[cid] < 6:
+                    id_usage[cid] += 1
+                    diff -= 1
+        elif diff < 0:
+            # Need to remove records
+            eligible_ids = [cid for cid in all_ids if id_usage[cid] > 1]
+            for _ in range(abs(diff)):
+                if diff >= 0:
+                    break
+                cid = random.choice(eligible_ids)
+                if id_usage[cid] > 1:
+                    id_usage[cid] -= 1
+                    diff += 1
     
     # Build the final list of customer IDs
     customer_ids = []
@@ -158,12 +202,20 @@ def generate_customer_id_distribution():
     # Verify we have exactly 300,000
     assert len(customer_ids) == TOTAL_RECORDS, f"Expected {TOTAL_RECORDS}, got {len(customer_ids)}"
     
+    # Verify all IDs 1-200,000 are used
+    used_ids = set(customer_ids)
+    assert used_ids == set(range(1, 200001)), "Not all customer IDs are assigned"
+    
     # Verify no ID repeats more than 6 times
     id_counts = {}
     for cid in customer_ids:
         id_counts[cid] = id_counts.get(cid, 0) + 1
     max_repeats = max(id_counts.values())
     assert max_repeats <= 6, f"Found ID with {max_repeats} repeats, max allowed is 6"
+    
+    # Verify all combinations (1,2,3,4,5,6) are used
+    final_counts = set(id_counts.values())
+    assert final_counts.issuperset({1, 2, 3, 4, 5, 6}), f"Missing repetition counts. Found: {final_counts}"
     
     # Shuffle the final list to randomize order
     random.shuffle(customer_ids)

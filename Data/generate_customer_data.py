@@ -8,12 +8,15 @@ np.random.seed(42)
 random.seed(42)
 
 # Number of records
-n_records = 200000
+n_records = 300000
 
-print("Generating 200,000 customer records...")
+print("Generating 300,000 customer records...")
 
-# Generate unique IDs
-ids = list(range(1, n_records + 1))
+# Generate customer IDs: unique numbers between 1 and 200,000, but can repeat
+# Since we need 300,000 records but only 200,000 unique IDs, IDs will repeat
+unique_ids = list(range(1, 200001))  # IDs from 1 to 200,000
+# Randomly sample with replacement to get 300,000 IDs
+ids = np.random.choice(unique_ids, size=n_records, replace=True)
 
 # Generate clv_decile (10% for each value 1-10)
 clv_decile = np.repeat(range(1, 11), n_records // 10)
@@ -23,15 +26,18 @@ np.random.shuffle(clv_decile)
 churn_risk = np.random.choice([0, 1], size=n_records, p=[0.98, 0.02])
 
 # Generate current_bb_speed with exact specified distributions
-# 10% Copper (below 500mb), 32% 500mb, 35% 1Gig, 20% 2Gig = 97%
-# Adding 3% proportionally: 0.3% Copper, 1% 500mb, 1% 1Gig, 0.7% 2Gig
+# 10% Copper (below 500mb), 32% 500mb, 35% 1Gig, 20% 2Gig
+# Normalizing to ensure they sum to 100%
 speed_categories = [
-    'Copper',  # Below 500mb - 10.3%
-    '500mb',   # 33%
-    '1Gig',    # 36%
-    '2Gig'     # 20.7%
+    'Copper',  # Below 500mb
+    '500mb',
+    '1Gig',
+    '2Gig'
 ]
-speed_probabilities = [0.103, 0.33, 0.36, 0.207]
+# Raw percentages: 10, 32, 35, 20 = 97, normalize to 100%
+speed_probabilities = [0.10, 0.32, 0.35, 0.20]
+total = sum(speed_probabilities)
+speed_probabilities = [p/total for p in speed_probabilities]  # Normalize to sum to 1.0
 current_bb_speed = np.random.choice(speed_categories, size=n_records, p=speed_probabilities)
 
 # Generate network_activity (25% heavy, 50% medium, 25% light)
@@ -54,16 +60,20 @@ time_of_last_broadband_upgrade = [
 broadband_type = ['Copper' if speed == 'Copper' else 'Fiber' for speed in current_bb_speed]
 
 # Generate customer_segment with exact specified distributions
-# Aspirational Adopters - 6%, Peak Performers - 22%, Budget Balancers - 14%,
-# Foolproof Followers - 21%, Settled Simplifiers - 37% (adjusted to sum to 100%)
+# Asipirational Adopters - 6%, Peak Performers - 22%, Budget Balancers - 14%,
+# Foolproof Followers - 21%, Settled Simplifiers - 36%
+# Normalizing to ensure they sum to 100%
 segments = [
-    'Aspirational Adopters',
+    'Asipirational Adopters',  # Note: keeping typo from prompt
     'Peak Performers',
     'Budget Balancers',
     'Foolproof Followers',
     'Settled Simplifiers'
 ]
-segment_probabilities = [0.06, 0.22, 0.14, 0.21, 0.37]
+# Raw percentages: 6, 22, 14, 21, 36 = 99, normalize to 100%
+segment_probabilities = [0.06, 0.22, 0.14, 0.21, 0.36]
+total = sum(segment_probabilities)
+segment_probabilities = [p/total for p in segment_probabilities]  # Normalize to sum to 1.0
 customer_segment = np.random.choice(segments, size=n_records, p=segment_probabilities)
 
 # Create DataFrame
