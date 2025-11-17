@@ -1,0 +1,13 @@
+I am going to create an UI.
+
+The UI will have 3 tabs you can switch between.
+
+The UI will use shiny.
+
+The data will be pulled from customer_data.csv and device_data.csv.
+
+The first tab will display the total number of devices which can be branches into if the device's ISP is Frontier or Not Frontier. If it is Not Frontier we will only branch into Active or Inactive. Active is defined as if the last_alive_date less than 30 days ago. 
+
+From Frontier devices, we will branch into active and not Inactive. Active is defined as if the last_alive_date is less than 30 days. 
+
+The devices on the Frontier ISP and Active it is the main target for our project.
