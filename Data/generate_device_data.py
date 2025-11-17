@@ -1,5 +1,6 @@
 import csv
 import random
+import pandas as pd
 from datetime import datetime, timedelta
 
 # Set seed for reproducibility
@@ -12,12 +13,12 @@ MIN_CUSTOMER_ID = 1
 MAX_CUSTOMER_ID = 200000
 
 # Device models with their max speeds
-DEVICE_MODELS = [
-    "Eero 6",       # Copper only
-    "Eero 6+",      # Fiber up to 500 Mbps
-    "Eero Pro 6",   # Fiber up to 1 Gig
-    "Eero Pro 6E"   # Fiber up to 2 Gig
-]
+DEVICE_MODELS = {
+    "Eero 6": "Copper",           # Copper only
+    "Eero 6+": "500mb",           # Fiber up to 500 Mbps
+    "Eero Pro 6": "1Gig",         # Fiber up to 1 Gig
+    "Eero Pro 6E": "2Gig"        # Fiber up to 2 Gig
+}
 
 # Device status distribution
 DEVICE_STATUS = {
@@ -48,6 +49,49 @@ CURRENT_DATE = datetime(2025, 11, 17)
 FIVE_YEARS_AGO = CURRENT_DATE - timedelta(days=5*365)
 
 
+def load_customer_data():
+    """Load customer data to match device models with customer speeds"""
+    try:
+        df = pd.read_csv('Data Output/customer_data.csv')
+        # Create a dictionary mapping customer_id to speed
+        customer_speeds = dict(zip(df['customer_id'], df['current_bb_speed']))
+        return customer_speeds
+    except FileNotFoundError:
+        print("Warning: customer_data.csv not found. Generating without speed matching.")
+        return None
+
+
+def get_compatible_device_models(customer_speed):
+    """
+    Get device models compatible with customer speed.
+    Customers can have devices that support their speed or higher.
+    Some customers may have lower-speed devices for realism.
+    """
+    speed_hierarchy = {
+        'Copper': ['Eero 6'],
+        '500mb': ['Eero 6', 'Eero 6+'],
+        '1Gig': ['Eero 6', 'Eero 6+', 'Eero Pro 6'],
+        '2Gig': ['Eero 6', 'Eero 6+', 'Eero Pro 6', 'Eero Pro 6E']
+    }
+    
+    compatible = speed_hierarchy.get(customer_speed, ['Eero 6'])
+    
+    # Add realism: some customers may have devices below their max speed
+    # But most should have appropriate devices
+    if customer_speed == '500mb':
+        # 80% have Eero 6+, 20% have Eero 6
+        return random.choices(['Eero 6+', 'Eero 6'], weights=[0.80, 0.20], k=1)[0]
+    elif customer_speed == '1Gig':
+        # 70% have Eero Pro 6, 20% have Eero 6+, 10% have Eero 6
+        return random.choices(['Eero Pro 6', 'Eero 6+', 'Eero 6'], weights=[0.70, 0.20, 0.10], k=1)[0]
+    elif customer_speed == '2Gig':
+        # 60% have Eero Pro 6E, 25% have Eero Pro 6, 10% have Eero 6+, 5% have Eero 6
+        return random.choices(['Eero Pro 6E', 'Eero Pro 6', 'Eero 6+', 'Eero 6'], 
+                             weights=[0.60, 0.25, 0.10, 0.05], k=1)[0]
+    else:  # Copper
+        return 'Eero 6'
+
+
 def generate_customer_id_distribution():
     """
     Generate customer ID distribution for exactly 300,000 records:
@@ -55,7 +99,6 @@ def generate_customer_id_distribution():
     - No ID can repeat more than 6 times
     - Between 80% and 90% of the USED IDs should appear exactly twice
     - Must generate exactly 300,000 records
-    - Try to use all 200,000 IDs if possible
     """
     all_ids = list(range(MIN_CUSTOMER_ID, MAX_CUSTOMER_ID + 1))
     random.shuffle(all_ids)
@@ -63,11 +106,9 @@ def generate_customer_id_distribution():
     # Target: 80-90% of used IDs appear twice
     twice_percentage = random.uniform(0.80, 0.90)
     
-    # Work backwards: if we have X IDs used twice and Y IDs used once,
-    # then: 2X + Y = 300,000 and X/(X+Y) = twice_percentage
+    # Calculate how many IDs should be used twice
+    # If X IDs are used twice: 2X + Y = 300,000 and X/(X+Y) = twice_percentage
     # Solving: X = twice_percentage * 300,000 / (1 + twice_percentage)
-    #          Y = 300,000 - 2X
-    
     ids_used_twice_count = int((twice_percentage * TOTAL_RECORDS) / (1 + twice_percentage))
     records_from_twice = ids_used_twice_count * 2
     remaining_records = TOTAL_RECORDS - records_from_twice
@@ -76,8 +117,7 @@ def generate_customer_id_distribution():
     total_unique_ids_needed = ids_used_twice_count + remaining_records
     
     if total_unique_ids_needed > TOTAL_CUSTOMER_IDS:
-        # Adjust to fit within available IDs - use all 200,000 IDs
-        # Some IDs will be used more than once or twice
+        # Adjust to fit within available IDs
         ids_used_twice_count = int(TOTAL_CUSTOMER_IDS * twice_percentage)
         records_from_twice = ids_used_twice_count * 2
         remaining_records = TOTAL_RECORDS - records_from_twice
@@ -90,11 +130,11 @@ def generate_customer_id_distribution():
         for i in range(ids_used_twice_count):
             id_usage[all_ids[i]] = 2
         
-        # Distribute remaining records
+        # Distribute remaining records (max 6 per ID)
         idx = ids_used_twice_count
         while remaining_records > 0 and idx < TOTAL_CUSTOMER_IDS:
             # Use between 1 and min(6, remaining_records) for each ID
-            count = min(random.randint(1, 6), remaining_records)
+            count = min(random.randint(1, min(6, remaining_records)), remaining_records)
             id_usage[all_ids[idx]] = count
             remaining_records -= count
             idx += 1
@@ -117,6 +157,13 @@ def generate_customer_id_distribution():
     
     # Verify we have exactly 300,000
     assert len(customer_ids) == TOTAL_RECORDS, f"Expected {TOTAL_RECORDS}, got {len(customer_ids)}"
+    
+    # Verify no ID repeats more than 6 times
+    id_counts = {}
+    for cid in customer_ids:
+        id_counts[cid] = id_counts.get(cid, 0) + 1
+    max_repeats = max(id_counts.values())
+    assert max_repeats <= 6, f"Found ID with {max_repeats} repeats, max allowed is 6"
     
     # Shuffle the final list to randomize order
     random.shuffle(customer_ids)
@@ -164,7 +211,7 @@ def generate_serial_number(existing_serials):
             return serial
 
 
-def generate_device_data():
+def generate_device_data(customer_speeds=None):
     """Generate all device records"""
     print("Generating customer ID distribution...")
     customer_ids = generate_customer_id_distribution()
@@ -190,9 +237,17 @@ def generate_device_data():
         if (i + 1) % 50000 == 0:
             print(f"Generated {i + 1:,} records...")
         
+        # Get customer speed if available, otherwise random
+        if customer_speeds and customer_id in customer_speeds:
+            customer_speed = customer_speeds[customer_id]
+            device_model = get_compatible_device_models(customer_speed)
+        else:
+            # Fallback: random device model
+            device_model = random.choice(list(DEVICE_MODELS.keys()))
+        
         record = {
             'customer_id': customer_id,
-            'device_model': random.choice(DEVICE_MODELS),
+            'device_model': device_model,
             'device_status': weighted_choice(DEVICE_STATUS),
             'isp': weighted_choice(ISP_OPTIONS),
             'ship_date': generate_ship_date().strftime('%Y-%m-%d'),
@@ -205,7 +260,7 @@ def generate_device_data():
     return records
 
 
-def write_to_csv(records, filename='device_data.csv'):
+def write_to_csv(records, filename='Data Output/device_data.csv'):
     """Write records to CSV file"""
     print(f"\nWriting {len(records):,} records to {filename}...")
     
@@ -288,9 +343,13 @@ if __name__ == "__main__":
     print(f"Target: {TOTAL_RECORDS:,} records")
     print(f"Customer ID range: {MIN_CUSTOMER_ID:,} to {MAX_CUSTOMER_ID:,}")
     
-    records = generate_device_data()
+    # Load customer data to match device models with speeds
+    customer_speeds = load_customer_data()
+    if customer_speeds:
+        print("✓ Loaded customer data for realistic device matching")
+    
+    records = generate_device_data(customer_speeds)
     write_to_csv(records)
     print_statistics(records)
     
     print("\n✓ Device data generation complete!")
-

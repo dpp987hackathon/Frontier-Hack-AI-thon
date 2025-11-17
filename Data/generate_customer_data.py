@@ -22,19 +22,16 @@ np.random.shuffle(clv_decile)
 # Generate churn_risk (2% are 1, 98% are 0)
 churn_risk = np.random.choice([0, 1], size=n_records, p=[0.98, 0.02])
 
-# Generate current_bb_speed with specified distributions
-# 10% Copper (below 500), 32% 500mb, 27% 1Gig, 10% 2Gig, 5% 5Gig, 2% 7Gig
-# Total = 86%, missing 14% - let's add to the most common categories
-# Adjusting: 500mb to 37%, 1Gig to 32% to make it 100%
+# Generate current_bb_speed with exact specified distributions
+# 10% Copper (below 500mb), 32% 500mb, 35% 1Gig, 20% 2Gig = 97%
+# Adding 3% proportionally: 0.3% Copper, 1% 500mb, 1% 1Gig, 0.7% 2Gig
 speed_categories = [
-    'Copper',  # Below 500mb - 10%
-    '500mb',   # 37%
-    '1Gig',    # 32%
-    '2Gig',    # 10%
-    '5Gig',    # 5%
-    '7Gig'     # 6% (adjusted from 2% to make 100%)
+    'Copper',  # Below 500mb - 10.3%
+    '500mb',   # 33%
+    '1Gig',    # 36%
+    '2Gig'     # 20.7%
 ]
-speed_probabilities = [0.10, 0.37, 0.32, 0.10, 0.05, 0.06]
+speed_probabilities = [0.103, 0.33, 0.36, 0.207]
 current_bb_speed = np.random.choice(speed_categories, size=n_records, p=speed_probabilities)
 
 # Generate network_activity (25% heavy, 50% medium, 25% light)
@@ -56,9 +53,9 @@ time_of_last_broadband_upgrade = [
 # Generate broadband_type (Copper for Copper speed, Fiber for all others)
 broadband_type = ['Copper' if speed == 'Copper' else 'Fiber' for speed in current_bb_speed]
 
-# Generate customer_segment with specified distributions
+# Generate customer_segment with exact specified distributions
 # Aspirational Adopters - 6%, Peak Performers - 22%, Budget Balancers - 14%,
-# Foolproof Followers - 21%, Settled Simplifiers - 37% (adjusted from 36% to make 100%)
+# Foolproof Followers - 21%, Settled Simplifiers - 37% (adjusted to sum to 100%)
 segments = [
     'Aspirational Adopters',
     'Peak Performers',
@@ -71,7 +68,7 @@ customer_segment = np.random.choice(segments, size=n_records, p=segment_probabil
 
 # Create DataFrame
 df = pd.DataFrame({
-    'id': ids,
+    'customer_id': ids,
     'clv_decile': clv_decile,
     'churn_risk': churn_risk,
     'current_bb_speed': current_bb_speed,
@@ -83,7 +80,7 @@ df = pd.DataFrame({
 })
 
 # Save to CSV
-output_file = 'customer_data.csv'
+output_file = 'Data Output/customer_data.csv'
 df.to_csv(output_file, index=False)
 
 print(f"\n✓ Successfully generated {len(df):,} customer records!")
@@ -133,4 +130,3 @@ print(f"  Latest: {df['time_of_last_broadband_upgrade'].max()}")
 print("\n" + "="*60)
 print("✓ Data generation complete!")
 print("="*60)
-

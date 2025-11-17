@@ -1,0 +1,24 @@
+
+CUSTOMER & DEVICE DATA ANALYSIS SUMMARY
+Generated: 2025-11-17 13:27:59
+
+Total Customers: 200,000
+Total Devices: 300,000
+Device Penetration: 81.41%
+Overall Churn Rate: 2.00%
+Fiber Penetration: 90.09%
+
+Top Customer Segments by Size:
+customer_segment
+Settled Simplifiers      73922
+Peak Performers          43870
+Foolproof Followers      42367
+Budget Balancers         28009
+Aspirational Adopters    11832
+
+Device Models Distribution:
+device_model
+Eero 6         75318
+Eero Pro 6E    75132
+Eero Pro 6     74942
+Eero 6+        74608
