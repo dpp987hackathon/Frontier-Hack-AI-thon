@@ -7,6 +7,7 @@ const DataLoader = {
     customerData: null,
     deviceData: null,
     nbaData: null,
+    vizData: null,
     
     /**
      * Load all required data files
@@ -27,16 +28,22 @@ const DataLoader = {
             const nbaData = await this.loadCSV('/Data/Data Output/nba_data.csv');
             console.log(`✓ Loaded ${nbaData.length} NBA records`);
             
+            console.log('Loading viz_data.csv...');
+            const vizData = await this.loadCSV('/Data/Data Output/viz_data.csv');
+            console.log(`✓ Loaded ${vizData.length} viz records`);
+            
             this.customerData = customerData;
             this.deviceData = this.parseDeviceData(deviceData);
             this.nbaData = nbaData;
+            this.vizData = this.parseVizData(vizData);
             
             console.log('✓ All data loaded successfully!');
             
             return {
                 customerData: this.customerData,
                 deviceData: this.deviceData,
-                nbaData: this.nbaData
+                nbaData: this.nbaData,
+                vizData: this.vizData
             };
         } catch (error) {
             console.error('❌ Error loading data:', error);
@@ -65,6 +72,21 @@ const DataLoader = {
             last_alive_date: new Date(d.last_alive_date),
             ship_date: new Date(d.ship_date),
             sqs_score: +d.sqs_score
+        }));
+    },
+    
+    /**
+     * Parse viz data and convert numeric values
+     */
+    parseVizData(data) {
+        return data.map(d => ({
+            quarter: d.Quarter_Label || d.quarter,
+            year: +d.Year || 0,
+            quarterNum: +d.Quarter || 0,
+            active: +d.Active || +d.active || 0,
+            inactive: +d.Inactive || +d.inactive || 0,
+            type: d.Type || '',
+            isForecast: d.Is_Forecast === 'True' || d.Is_Forecast === true
         }));
     },
     

@@ -30,7 +30,8 @@ const App = {
         console.log('Data loaded successfully:', {
             customers: this.data.customerData.length,
             devices: this.data.deviceData.length,
-            nba: this.data.nbaData.length
+            nba: this.data.nbaData.length,
+            viz: this.data.vizData.length
         });
     },
     
@@ -81,8 +82,108 @@ const App = {
         // Initialize NBA Module
         NBA.init(nbaWithSerialNumbers);
         
+        // Initialize Prediction module
+        this.initializePrediction();
+        
         // Initialize Actuals module
         this.initializeActuals();
+    },
+    
+    /**
+     * Initialize Prediction tab functionality
+     */
+    initializePrediction() {
+        if (!this.data || !this.data.vizData) {
+            console.error('Viz data not available');
+            return;
+        }
+        
+        const vizData = this.data.vizData;
+        
+        // Calculate statistics
+        const quarterCount = vizData.length;
+        const totalActive = d3.sum(vizData, d => d.active);
+        const totalInactive = d3.sum(vizData, d => d.inactive);
+        const avgActive = Math.round(totalActive / quarterCount);
+        const avgInactive = Math.round(totalInactive / quarterCount);
+        
+        // Update stat cards
+        const quarterCountEl = document.getElementById('prediction-quarter-count');
+        const avgActiveEl = document.getElementById('prediction-avg-active');
+        const avgInactiveEl = document.getElementById('prediction-avg-inactive');
+        
+        if (quarterCountEl) quarterCountEl.textContent = quarterCount.toLocaleString();
+        if (avgActiveEl) avgActiveEl.textContent = avgActive.toLocaleString();
+        if (avgInactiveEl) avgInactiveEl.textContent = avgInactive.toLocaleString();
+        
+        // Draw stacked bar chart by quarter
+        Charts.drawStackedBarChart('prediction-chart', vizData);
+        
+        // Populate inactive devices by quarter table
+        this.populateInactiveTable(vizData);
+        
+        console.log(`✓ Prediction tab initialized with ${quarterCount} quarters`);
+    },
+    
+    /**
+     * Populate the inactive devices by quarter table
+     */
+    populateInactiveTable(vizData) {
+        const tableBody = document.getElementById('inactive-table-body');
+        if (!tableBody) return;
+        
+        // Clear existing rows
+        tableBody.innerHTML = '';
+        
+        // Sort data by year and quarter
+        const sortedData = [...vizData].sort((a, b) => {
+            if (a.year !== b.year) return a.year - b.year;
+            return a.quarterNum - b.quarterNum;
+        });
+        
+        // Populate table rows
+        sortedData.forEach((d, index) => {
+            const row = document.createElement('tr');
+            
+            // Alternate row colors
+            const bgColor = index % 2 === 0 ? '#f9f9f9' : '#ffffff';
+            row.style.backgroundColor = bgColor;
+            row.style.transition = 'background-color 0.2s';
+            
+            // Add hover effect
+            row.addEventListener('mouseenter', function() {
+                this.style.backgroundColor = '#f0f4ff';
+            });
+            row.addEventListener('mouseleave', function() {
+                this.style.backgroundColor = bgColor;
+            });
+            
+            // Calculate total and percentage
+            const total = d.active + d.inactive;
+            const inactivePercent = total > 0 ? ((d.inactive / total) * 100).toFixed(2) : '0.00';
+            
+            // Determine row styling based on type
+            const typeLabel = d.type === 'Historical' ? 'Historical' : 'Forecast';
+            const typeBadgeColor = d.type === 'Historical' ? '#4CAF50' : '#FF9800';
+            const typeBadgeStyle = `background-color: ${typeBadgeColor}; color: white; padding: 5px 10px; border-radius: 12px; font-size: 0.85em; font-weight: 600;`;
+            
+            // Quarter number starts at 1 for the first quarter (2021 Q4)
+            const quarterNum = index + 1;
+            
+            row.innerHTML = `
+                <td style="padding: 12px; border: 1px solid #ddd; text-align: center; font-weight: 600; color: #666;">${quarterNum}</td>
+                <td style="padding: 12px; border: 1px solid #ddd; font-weight: 600;">${d.quarter}</td>
+                <td style="padding: 12px; border: 1px solid #ddd; text-align: right;">${d.active.toLocaleString()}</td>
+                <td style="padding: 12px; border: 1px solid #ddd; text-align: right; color: #FF5252; font-weight: 600;">${d.inactive.toLocaleString()}</td>
+                <td style="padding: 12px; border: 1px solid #ddd; text-align: right; font-weight: 600;">${total.toLocaleString()}</td>
+                <td style="padding: 12px; border: 1px solid #ddd; text-align: right; font-weight: 600;">${inactivePercent}%</td>
+                <td style="padding: 12px; border: 1px solid #ddd; text-align: center;"><span style="${typeBadgeStyle}">${typeLabel}</span></td>
+            `;
+            
+            tableBody.appendChild(row);
+        });
+        
+        console.log(`✓ Populated inactive devices table with ${sortedData.length} quarters`);
     },
     
     /**
@@ -211,6 +312,14 @@ const App = {
                 break;
             case 'nba':
                 NBA.updateNBAView();
+                break;
+            case 'prediction':
+                // Refresh the prediction visualizations
+                if (this.data && this.data.vizData) {
+                    Charts.drawStackedBarChart('prediction-chart', this.data.vizData);
+                    this.populateInactiveTable(this.data.vizData);
+                    console.log('Prediction visualizations refreshed');
+                }
                 break;
             case 'actuals':
                 // Actuals tab is static, no refresh needed

@@ -25,6 +25,7 @@
             <div class="tabs">
                 <button class="tab" data-tab="overview">Device View</button>
                 <button class="tab" data-tab="nba">Customer View</button>
+                <button class="tab" data-tab="prediction">Prediction</button>
                 <button class="tab" data-tab="actuals">Actuals</button>
             </div>
             
@@ -247,7 +248,7 @@
                             </div>
                             
                             <!-- Estimated Liability KPI -->
-                            <div style="
+                                <div style="
                                 background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
                                 border-radius: 16px;
                                 box-shadow: 0 8px 20px rgba(108, 117, 125, 0.25);
@@ -255,7 +256,7 @@
                                 flex-direction: column;
                                 align-items: center;
                                 justify-content: center;
-                                color: white;
+                                    color: white;
                                 padding: 35px 25px;
                                 min-height: 220px;
                             ">
@@ -265,8 +266,8 @@
                                 </div>
                                 <div style="font-size: 3.2em; font-weight: bold;" id="sim-total-liability">$0</div>
                                 <div style="font-size: 0.85em; margin-top: 12px; opacity: 0.9; text-align: center;" id="liability-detail">Based on device licenses</div>
-                            </div>
-                            
+                                </div>
+                                
                             <!-- Liability Impact KPI -->
                             <div id="liability-change-card" style="
                                 border-radius: 16px;
@@ -275,7 +276,7 @@
                                 flex-direction: column;
                                 align-items: center;
                                 justify-content: center;
-                                color: white;
+                                    color: white;
                                 padding: 35px 25px;
                                 min-height: 220px;
                             ">
@@ -285,10 +286,10 @@
                                 </div>
                                 <div style="font-size: 3.2em; font-weight: bold;" id="liability-change-percent">$0</div>
                                 <div style="font-size: 0.85em; margin-top: 12px; opacity: 0.9; text-align: center;" id="liability-change-detail">0% change</div>
-                            </div>
-                            
+                                </div>
+                                
                             <!-- Revenue Increase KPI -->
-                            <div style="
+                                <div style="
                                 background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
                                 border-radius: 16px;
                                 box-shadow: 0 8px 20px rgba(23, 162, 184, 0.25);
@@ -296,7 +297,7 @@
                                 flex-direction: column;
                                 align-items: center;
                                 justify-content: center;
-                                color: white;
+                                    color: white;
                                 padding: 35px 25px;
                                 min-height: 220px;
                             ">
@@ -330,11 +331,35 @@
                 </div>
                 
                 <!-- Download Section -->
-                <div class="download-section">
-                    <p>📥 <strong>Export filtered customer data to CSV</strong></p>
-                    <button id="download-csv" class="btn btn-success">
-                        Download CSV
-                    </button>
+                <div class="download-section" style="text-align: center;">
+                    <h3 style="margin-bottom: 15px;">📥 Export Customer Data by Disposition</h3>
+                    <p style="color: #666; margin-bottom: 20px;">
+                        Download CSV files for specific customer actions/recommendations
+                    </p>
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; max-width: 800px; margin: 0 auto;">
+                        <button id="download-ship-device" class="btn download-disposition-btn" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; transition: transform 0.2s, box-shadow 0.2s; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);">
+                            📦 Ship New Device
+                        </button>
+                        <button id="download-upgrade-device" class="btn download-disposition-btn" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 15px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; transition: transform 0.2s, box-shadow 0.2s; box-shadow: 0 4px 15px rgba(240, 147, 251, 0.3);">
+                            🚀 Speed Upgrade + New Device
+                        </button>
+                        <button id="download-upgrade-only" class="btn download-disposition-btn" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; padding: 15px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; transition: transform 0.2s, box-shadow 0.2s; box-shadow: 0 4px 15px rgba(79, 172, 254, 0.3);">
+                            ⚡ Speed Upgrade Only
+                        </button>
+                        <button id="download-keep-as-is" class="btn download-disposition-btn" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); color: white; padding: 15px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; transition: transform 0.2s, box-shadow 0.2s; box-shadow: 0 4px 15px rgba(67, 233, 123, 0.3);">
+                            ✅ Keep As Is
+                        </button>
+                    </div>
+                    <style>
+                        .download-disposition-btn:hover {
+                            transform: translateY(-2px);
+                            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3) !important;
+                        }
+                        .download-disposition-btn:active {
+                            transform: translateY(0);
+                            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2) !important;
+                        }
+                    </style>
                 </div>
                 
                 <!-- Search Filters (Above Data Table) -->
@@ -379,6 +404,65 @@
                                 </tr>
                             </thead>
                             <tbody id="nba-table-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Prediction Tab -->
+            <div id="prediction-content" class="tab-content">
+                <h2>Device Activity Prediction</h2>
+                <p style="color: #666; margin-bottom: 30px;">
+                    Quarterly analysis showing active vs inactive device trends over time.
+                </p>
+                
+                <!-- Statistics Cards -->
+                <div class="stats-grid" style="margin-bottom: 30px;">
+                    <div class="stat-card">
+                        <div class="stat-label">Total Quarters</div>
+                        <div class="stat-value" id="prediction-quarter-count">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Average Active Devices</div>
+                        <div class="stat-value" id="prediction-avg-active">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Average Inactive Devices</div>
+                        <div class="stat-value" id="prediction-avg-inactive">0</div>
+                    </div>
+                </div>
+                
+                <!-- Stacked Bar Chart -->
+                <div class="chart-container" style="width: 100%;">
+                    <h3>Device Activity by Quarter</h3>
+                    <p style="color: #666; margin-bottom: 20px;">
+                        Stacked bar chart showing the distribution of active and inactive devices across quarters
+                    </p>
+                    <div id="prediction-chart" style="width: 100%; min-height: 500px;"></div>
+                </div>
+                
+                <!-- Inactive Devices by Quarter Table -->
+                <div class="chart-container" style="width: 100%; margin-top: 30px;">
+                    <h3>Inactive Devices by Quarter</h3>
+                    <p style="color: #666; margin-bottom: 20px;">
+                        Quarterly breakdown showing inactive device counts and percentage of total devices
+                    </p>
+                    <div style="overflow-x: auto;">
+                        <table id="inactive-by-quarter-table" style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+                            <thead>
+                                <tr style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                                    <th style="padding: 15px; text-align: center; font-weight: 600; border: 1px solid #ddd;">#</th>
+                                    <th style="padding: 15px; text-align: left; font-weight: 600; border: 1px solid #ddd;">Quarter</th>
+                                    <th style="padding: 15px; text-align: right; font-weight: 600; border: 1px solid #ddd;">Active Devices</th>
+                                    <th style="padding: 15px; text-align: right; font-weight: 600; border: 1px solid #ddd;">Inactive Devices</th>
+                                    <th style="padding: 15px; text-align: right; font-weight: 600; border: 1px solid #ddd;">Total Devices</th>
+                                    <th style="padding: 15px; text-align: right; font-weight: 600; border: 1px solid #ddd;">Inactive %</th>
+                                    <th style="padding: 15px; text-align: center; font-weight: 600; border: 1px solid #ddd;">Type</th>
+                                </tr>
+                            </thead>
+                            <tbody id="inactive-table-body">
+                                <!-- Rows will be populated by JavaScript -->
+                            </tbody>
                         </table>
                     </div>
                 </div>

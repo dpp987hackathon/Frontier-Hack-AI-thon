@@ -488,6 +488,246 @@ const Charts = {
                     }
                 });
         }
+    },
+    
+    /**
+     * Draw a stacked bar chart showing active vs inactive devices by quarter
+     */
+    drawStackedBarChart(containerId, data) {
+        // Clear existing chart
+        d3.select(`#${containerId}`).selectAll('*').remove();
+        
+        // Get container width for responsive chart
+        const container = document.getElementById(containerId);
+        const containerWidth = container ? container.offsetWidth : 1200;
+        
+        const margin = { top: 40, right: 200, bottom: 80, left: 100 };
+        const width = containerWidth - margin.left - margin.right;
+        const height = 500;
+        
+        const svg = d3.select(`#${containerId}`)
+            .append('svg')
+            .attr('width', width + margin.left + margin.right)
+            .attr('height', height + margin.top + margin.bottom)
+            .append('g')
+            .attr('transform', `translate(${margin.left}, ${margin.top})`);
+        
+        // Define colors
+        const colors = {
+            active: '#4CAF50',
+            inactive: '#FF5252'
+        };
+        
+        // Create striped patterns for forecast data
+        const defs = svg.append('defs');
+        
+        // Active striped pattern
+        const activePattern = defs.append('pattern')
+            .attr('id', 'active-stripes')
+            .attr('patternUnits', 'userSpaceOnUse')
+            .attr('width', 8)
+            .attr('height', 8)
+            .attr('patternTransform', 'rotate(45)');
+        
+        activePattern.append('rect')
+            .attr('width', 8)
+            .attr('height', 8)
+            .attr('fill', colors.active)
+            .attr('opacity', 0.3);
+        
+        activePattern.append('line')
+            .attr('x1', 0)
+            .attr('y1', 0)
+            .attr('x2', 0)
+            .attr('y2', 8)
+            .attr('stroke', colors.active)
+            .attr('stroke-width', 4);
+        
+        // Inactive striped pattern
+        const inactivePattern = defs.append('pattern')
+            .attr('id', 'inactive-stripes')
+            .attr('patternUnits', 'userSpaceOnUse')
+            .attr('width', 8)
+            .attr('height', 8)
+            .attr('patternTransform', 'rotate(45)');
+        
+        inactivePattern.append('rect')
+            .attr('width', 8)
+            .attr('height', 8)
+            .attr('fill', colors.inactive)
+            .attr('opacity', 0.3);
+        
+        inactivePattern.append('line')
+            .attr('x1', 0)
+            .attr('y1', 0)
+            .attr('x2', 0)
+            .attr('y2', 8)
+            .attr('stroke', colors.inactive)
+            .attr('stroke-width', 4);
+        
+        // Extract quarters for x-axis
+        const quarters = data.map(d => d.quarter);
+        
+        // Stack the data
+        const stack = d3.stack()
+            .keys(['active', 'inactive'])
+            .order(d3.stackOrderNone)
+            .offset(d3.stackOffsetNone);
+        
+        const stackedData = stack(data);
+        
+        // Define scales
+        const x = d3.scaleBand()
+            .domain(quarters)
+            .range([0, width])
+            .padding(0.3);
+        
+        const y = d3.scaleLinear()
+            .domain([0, d3.max(stackedData, layer => d3.max(layer, d => d[1]))])
+            .nice()
+            .range([height, 0]);
+        
+        // Draw bars
+        const layers = svg.selectAll('.layer')
+            .data(stackedData)
+            .enter()
+            .append('g')
+            .attr('class', 'layer');
+        
+        layers.selectAll('rect')
+            .data(d => d)
+            .enter()
+            .append('rect')
+            .attr('x', (d, i) => x(quarters[i]))
+            .attr('y', d => y(d[1]))
+            .attr('height', d => y(d[0]) - y(d[1]))
+            .attr('width', x.bandwidth())
+            .attr('fill', function(d) {
+                const parentData = d3.select(this.parentNode).datum();
+                const key = parentData.key;
+                const isForecast = d.data.isForecast;
+                
+                if (isForecast) {
+                    // Use striped pattern for forecast data
+                    return key === 'active' ? 'url(#active-stripes)' : 'url(#inactive-stripes)';
+                } else {
+                    // Use solid color for historical data
+                    return colors[key];
+                }
+            })
+            .style('stroke', 'white')
+            .style('stroke-width', 2)
+            .on('mouseover', function(event, d) {
+                d3.select(this)
+                    .transition()
+                    .duration(200)
+                    .style('opacity', 0.8);
+                
+                // Show tooltip
+                const parentData = d3.select(this.parentNode).datum();
+                const key = parentData.key;
+                const value = d.data[key];
+                
+                svg.append('text')
+                    .attr('class', 'tooltip-text')
+                    .attr('x', x(d.data.quarter) + x.bandwidth() / 2)
+                    .attr('y', y(d[1]) + (y(d[0]) - y(d[1])) / 2)
+                    .attr('text-anchor', 'middle')
+                    .attr('dy', '0.35em')
+                    .style('font-size', '14px')
+                    .style('font-weight', 'bold')
+                    .style('fill', 'white')
+                    .style('pointer-events', 'none')
+                    .text(value.toLocaleString());
+            })
+            .on('mouseout', function() {
+                d3.select(this)
+                    .transition()
+                    .duration(200)
+                    .style('opacity', 1);
+                
+                svg.selectAll('.tooltip-text').remove();
+            });
+        
+        // Add X axis
+        svg.append('g')
+            .attr('transform', `translate(0, ${height})`)
+            .call(d3.axisBottom(x))
+            .selectAll('text')
+            .style('text-anchor', 'end')
+            .attr('dx', '-.8em')
+            .attr('dy', '.15em')
+            .attr('transform', 'rotate(-45)')
+            .style('font-size', '13px')
+            .style('font-weight', '500');
+        
+        // Add Y axis
+        svg.append('g')
+            .call(d3.axisLeft(y).tickFormat(d => d.toLocaleString()))
+            .selectAll('text')
+            .style('font-size', '12px');
+        
+        // Add X axis label
+        svg.append('text')
+            .attr('x', width / 2)
+            .attr('y', height + 70)
+            .attr('text-anchor', 'middle')
+            .style('font-size', '14px')
+            .style('font-weight', '600')
+            .style('fill', '#666')
+            .text('Quarter');
+        
+        // Add Y axis label
+        svg.append('text')
+            .attr('transform', 'rotate(-90)')
+            .attr('x', -height / 2)
+            .attr('y', -60)
+            .attr('text-anchor', 'middle')
+            .style('font-size', '14px')
+            .style('font-weight', '600')
+            .style('fill', '#666')
+            .text('Number of Devices');
+        
+        // Add legend
+        const legend = svg.append('g')
+            .attr('transform', `translate(${width + 20}, 0)`);
+        
+        // Add legend title
+        legend.append('text')
+            .attr('x', 0)
+            .attr('y', -5)
+            .style('font-size', '13px')
+            .style('font-weight', 'bold')
+            .style('fill', '#333')
+            .text('Legend');
+        
+        const legendItems = [
+            { key: 'active', label: 'Active (Historical)', color: colors.active, isForecast: false },
+            { key: 'active', label: 'Active (Forecast)', color: 'url(#active-stripes)', isForecast: true },
+            { key: 'inactive', label: 'Inactive (Historical)', color: colors.inactive, isForecast: false },
+            { key: 'inactive', label: 'Inactive (Forecast)', color: 'url(#inactive-stripes)', isForecast: true }
+        ];
+        
+        legendItems.forEach((item, i) => {
+            const legendRow = legend.append('g')
+                .attr('transform', `translate(0, ${i * 30 + 15})`);
+            
+            legendRow.append('rect')
+                .attr('width', 20)
+                .attr('height', 20)
+                .attr('fill', item.color)
+                .attr('rx', 3)
+                .style('stroke', '#ccc')
+                .style('stroke-width', 1);
+            
+            legendRow.append('text')
+                .attr('x', 30)
+                .attr('y', 15)
+                .style('font-size', '12px')
+                .style('font-weight', '500')
+                .style('fill', '#333')
+                .text(item.label);
+        });
     }
 };
 

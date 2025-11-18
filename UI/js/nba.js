@@ -75,7 +75,12 @@ const NBA = {
         const filterSelect = document.getElementById('nba-filter');
         const customerSearchInput = document.getElementById('customer-search');
         const serialSearchInput = document.getElementById('serial-search');
-        const downloadBtn = document.getElementById('download-csv');
+        
+        // Download buttons for each disposition
+        const downloadShipDeviceBtn = document.getElementById('download-ship-device');
+        const downloadUpgradeDeviceBtn = document.getElementById('download-upgrade-device');
+        const downloadUpgradeOnlyBtn = document.getElementById('download-upgrade-only');
+        const downloadKeepAsIsBtn = document.getElementById('download-keep-as-is');
         
         if (filterSelect) {
             filterSelect.addEventListener('change', (e) => {
@@ -97,9 +102,28 @@ const NBA = {
             });
         }
         
-        if (downloadBtn) {
-            downloadBtn.addEventListener('click', () => {
-                this.downloadCSV();
+        // Setup download button event listeners for each disposition
+        if (downloadShipDeviceBtn) {
+            downloadShipDeviceBtn.addEventListener('click', () => {
+                this.downloadCSV('Ship new device');
+            });
+        }
+        
+        if (downloadUpgradeDeviceBtn) {
+            downloadUpgradeDeviceBtn.addEventListener('click', () => {
+                this.downloadCSV('Speed upgrade + new device');
+            });
+        }
+        
+        if (downloadUpgradeOnlyBtn) {
+            downloadUpgradeOnlyBtn.addEventListener('click', () => {
+                this.downloadCSV('Speed upgrade only');
+            });
+        }
+        
+        if (downloadKeepAsIsBtn) {
+            downloadKeepAsIsBtn.addEventListener('click', () => {
+                this.downloadCSV('Keep as is');
             });
         }
         
@@ -632,9 +656,20 @@ const NBA = {
     },
     
     /**
-     * Download filtered data as CSV
+     * Download filtered data as CSV by disposition
+     * @param {string} disposition - The next_best_action to filter by
      */
-    downloadCSV() {
+    downloadCSV(disposition) {
+        // Filter data by the specified disposition
+        const filteredByDisposition = this.filteredData.filter(row => 
+            row.next_best_action === disposition
+        );
+        
+        if (filteredByDisposition.length === 0) {
+            alert(`No customers found with disposition: "${disposition}"`);
+            return;
+        }
+        
         const headers = [
             'customer_id', 'serial_number', 'next_best_action', 'customer_segment', 'clv_decile',
             'churn_risk', 'sqs_score', 'broadband_type', 'current_bb_speed',
@@ -643,7 +678,7 @@ const NBA = {
         
         let csv = headers.join(',') + '\n';
         
-        this.filteredData.forEach(row => {
+        filteredByDisposition.forEach(row => {
             const values = headers.map(header => {
                 const value = row[header] || '';
                 return `"${value}"`;
@@ -656,14 +691,16 @@ const NBA = {
         const a = document.createElement('a');
         
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-        const filterName = this.currentFilter === 'all' ? 'All_Actions' : this.currentFilter.replace(/ /g, '_');
+        const dispositionName = disposition.replace(/ /g, '_').toLowerCase();
         a.href = url;
-        a.download = `next_best_action_${filterName}_${timestamp}.csv`;
+        a.download = `nba_${dispositionName}_${timestamp}.csv`;
         
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         window.URL.revokeObjectURL(url);
+        
+        console.log(`Downloaded ${filteredByDisposition.length} records for disposition: ${disposition}`);
     }
 };
 
