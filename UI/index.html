@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Device Analytics Dashboard</title>
+    
+    <!-- D3.js Library -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/components.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <h1>📊 Device Analytics Dashboard</h1>
+        </header>
+        
+        <!-- Main Content -->
+        <div id="main-content">
+            <!-- Tab Navigation -->
+            <div class="tabs">
+                <button class="tab" data-tab="overview">Summary View</button>
+                <button class="tab" data-tab="nba">Detailed View</button>
+            </div>
+            
+            <!-- Tab Contents -->
+            
+            <!-- Device Overview Tab -->
+            <div id="overview-content" class="tab-content">
+                <h2>Device Overview</h2>
+                
+                <!-- Statistics Cards -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Total Devices</div>
+                        <div class="stat-value" id="total-devices">0</div>
+                    </div>
+                    <div class="stat-card target">
+                        <div class="stat-label">🎯 Target Group (Frontier + Active)</div>
+                        <div class="stat-value" id="target-devices">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Frontier Devices</div>
+                        <div class="stat-value" id="frontier-devices">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Non-Frontier Devices</div>
+                        <div class="stat-value" id="non-frontier-devices">0</div>
+                    </div>
+                    <div class="stat-card" style="background: linear-gradient(135deg, #ee0979 0%, #ff6a00 100%); color: white;">
+                        <div class="stat-label" style="color: white; opacity: 0.95;">💰 Expected Liability (No Action)</div>
+                        <div class="stat-value" id="expected-liability" style="color: white;">$0</div>
+                        <div style="font-size: 0.8em; margin-top: 8px; opacity: 0.9; color: white;">$6.00 per device/year</div>
+                    </div>
+                </div>
+                
+                <!-- Tree Visualization -->
+                <div class="chart-container">
+                    <h3>Device Distribution Tree</h3>
+                    <div id="tree-view" class="tree-container"></div>
+                </div>
+                
+                <!-- Pie Charts -->
+                <div class="charts-row">
+                    <div class="chart-container">
+                        <h3>Frontier Devices Distribution</h3>
+                        <div id="frontier-chart"></div>
+                    </div>
+                    <div class="chart-container">
+                        <h3>Non-Frontier Devices Distribution</h3>
+                        <div id="non-frontier-chart"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Next Best Action Tab -->
+            <div id="nba-content" class="tab-content">
+                <h2>Next Best Action Recommendations</h2>
+                
+                <!-- Filter Info Banner -->
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="font-size: 1.5em;">🎯</span>
+                        <div>
+                            <strong style="font-size: 1.1em;">Filtered View: Frontier Network + Active Devices</strong>
+                            <div style="font-size: 0.9em; opacity: 0.9; margin-top: 5px;">
+                                Showing only devices on the Frontier Communications network that have been active in the last 30 days
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Controls -->
+                <div class="controls">
+                    <div class="control-group">
+                        <label for="nba-filter">Filter by Action:</label>
+                        <select id="nba-filter">
+                            <option value="all">All Actions</option>
+                            <option value="Ship new device">Ship new device</option>
+                            <option value="Speed upgrade + new device">Speed upgrade + new device</option>
+                            <option value="Speed upgrade only">Speed upgrade only</option>
+                            <option value="Keep as is">Keep as is</option>
+                        </select>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label for="customer-search">Search Customer ID:</label>
+                        <input 
+                            type="search" 
+                            id="customer-search" 
+                            placeholder="Enter customer ID...">
+                    </div>
+                    
+                    <div class="control-group">
+                        <label for="serial-search">Search Serial Number:</label>
+                        <input 
+                            type="search" 
+                            id="serial-search" 
+                            placeholder="Enter serial number...">
+                    </div>
+                </div>
+                
+                <!-- Statistics Cards -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Total Customers</div>
+                        <div class="stat-value" id="total-customers">0</div>
+                    </div>
+                    <div class="stat-card target">
+                        <div class="stat-label">Filtered View</div>
+                        <div class="stat-value" id="filtered-customers">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Top Actions</div>
+                        <div id="action-summary" style="font-size: 0.9em; line-height: 1.6;"></div>
+                    </div>
+                </div>
+                
+                <!-- Distribution Chart -->
+                <div class="chart-container">
+                    <h3>Action Distribution</h3>
+                    <div id="nba-distribution-chart"></div>
+                </div>
+                
+                <!-- Simulation Section -->
+                <div class="chart-container">
+                    <h3>📊 Action Simulation & ROI Analysis</h3>
+                    <p style="color: #666; margin-bottom: 20px;">
+                        Simulate the expected outcomes and estimated liability based on take rates
+                    </p>
+                    
+                    <!-- Simulation Controls -->
+                    <div class="controls" style="background: #f0f4ff; border-left: 4px solid #667eea;">
+                        <h4 style="margin-bottom: 15px; color: #667eea;">⚙️ Simulation Parameters</h4>
+                        
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
+                            <div class="control-group">
+                                <label for="take-rate-upgrade-only">
+                                    Take Rate - Speed Upgrade Only: 
+                                    <strong><span id="take-rate-upgrade-only-value">3</span>%</strong>
+                                </label>
+                                <input 
+                                    type="range" 
+                                    id="take-rate-upgrade-only" 
+                                    min="0" 
+                                    max="100" 
+                                    value="3" 
+                                    step="0.5">
+                            </div>
+                            
+                            <div class="control-group">
+                                <label for="take-rate-upgrade-device">
+                                    Take Rate - Speed + Device Upgrade: 
+                                    <strong><span id="take-rate-upgrade-device-value">5</span>%</strong>
+                                </label>
+                                <input 
+                                    type="range" 
+                                    id="take-rate-upgrade-device" 
+                                    min="0" 
+                                    max="100" 
+                                    value="5" 
+                                    step="0.5">
+                            </div>
+                            
+                            <div class="control-group">
+                                <label style="display: block; margin-bottom: 10px;">
+                                    Device License Cost:
+                                </label>
+                                <div style="padding: 12px; background: #f8f9fa; border-radius: 8px; border: 2px solid #667eea;">
+                                    <strong style="font-size: 1.1em; color: #667eea;">$6.00 per Device per Year</strong>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <button id="run-simulation" class="btn btn-primary" style="margin-top: 20px;">
+                            ▶️ Run Simulation
+                        </button>
+                    </div>
+                    
+                    <!-- Simulation Results -->
+                    <div id="simulation-results" style="display: none; margin-top: 30px;">
+                        <h4 style="margin-bottom: 20px; color: #28a745;">✅ Simulation Results</h4>
+                        
+                        <!-- KPI Visualization -->
+                        <div style="display: flex; justify-content: center; gap: 30px; margin-bottom: 30px; flex-wrap: wrap;">
+                            <!-- Estimated Liability KPI -->
+                            <div style="
+                                width: 320px;
+                                height: 320px;
+                                background: linear-gradient(135deg, #ee0979 0%, #ff6a00 100%);
+                                border-radius: 20px;
+                                box-shadow: 0 10px 30px rgba(238, 9, 121, 0.4);
+                                display: flex;
+                                flex-direction: column;
+                                align-items: center;
+                                justify-content: center;
+                                color: white;
+                                position: relative;
+                                overflow: hidden;
+                            ">
+                                <div style="position: absolute; top: 20px; left: 20px; right: 20px; text-align: center;">
+                                    <div style="font-size: 1.2em; font-weight: 600; opacity: 0.95;">Estimated Total Liability</div>
+                                    <div style="font-size: 0.85em; margin-top: 5px; opacity: 0.8;" id="liability-period">Per Year</div>
+                                </div>
+                                <div style="font-size: 4em; font-weight: bold; text-shadow: 0 4px 10px rgba(0,0,0,0.3);" id="sim-total-liability">$0</div>
+                                <div style="font-size: 0.95em; margin-top: 15px; opacity: 0.9; text-align: center; padding: 0 20px;" id="liability-detail">Based on device licenses</div>
+                            </div>
+                            
+                            <!-- Supporting Metrics Grid -->
+                            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; max-width: 500px;">
+                                <div style="
+                                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                                    border-radius: 15px;
+                                    padding: 20px;
+                                    color: white;
+                                    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+                                ">
+                                    <div style="font-size: 0.85em; opacity: 0.9; margin-bottom: 8px;">Expected Conversions</div>
+                                    <div style="font-size: 2em; font-weight: bold;" id="sim-conversions">0</div>
+                                    <div style="font-size: 0.75em; margin-top: 5px; opacity: 0.8;" id="sim-conversion-detail"></div>
+                                </div>
+                                
+                                <div style="
+                                    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+                                    border-radius: 15px;
+                                    padding: 20px;
+                                    color: white;
+                                    box-shadow: 0 4px 15px rgba(17, 153, 142, 0.3);
+                                ">
+                                    <div style="font-size: 0.85em; opacity: 0.9; margin-bottom: 8px;">Total Devices</div>
+                                    <div style="font-size: 2em; font-weight: bold;" id="sim-devices-shipped">0</div>
+                                    <div style="font-size: 0.75em; margin-top: 5px; opacity: 0.8;" id="sim-device-detail"></div>
+                                </div>
+                                
+                                <div style="
+                                    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+                                    border-radius: 15px;
+                                    padding: 20px;
+                                    color: white;
+                                    box-shadow: 0 4px 15px rgba(240, 147, 251, 0.3);
+                                ">
+                                    <div style="font-size: 0.85em; opacity: 0.9; margin-bottom: 8px;">License Cost</div>
+                                    <div style="font-size: 2em; font-weight: bold;" id="sim-license-cost">$6.00</div>
+                                    <div style="font-size: 0.75em; margin-top: 5px; opacity: 0.8;" id="sim-license-period">per device/year</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Breakdown Table -->
+                        <div style="margin-top: 30px; background: white; padding: 20px; border-radius: 8px;">
+                            <h4 style="margin-bottom: 15px;">Detailed Breakdown by Action</h4>
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Action Type</th>
+                                        <th>Eligible Customers</th>
+                                        <th>Take Rate</th>
+                                        <th>Expected Conversions</th>
+                                        <th>License Cost per Device</th>
+                                        <th>Total License Cost</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="simulation-breakdown"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Download Section -->
+                <div class="download-section">
+                    <p>📥 <strong>Export filtered customer data to CSV</strong></p>
+                    <button id="download-csv" class="btn btn-success">
+                        Download CSV
+                    </button>
+                </div>
+                
+                <!-- Data Table -->
+                <div class="chart-container">
+                    <h3>Data Table</h3>
+                    <p id="showing-count" style="margin-bottom: 10px; color: #666;"></p>
+                    <div style="overflow-x: auto;">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Customer ID</th>
+                                    <th>Serial Number</th>
+                                    <th>Next Best Action</th>
+                                    <th>Segment</th>
+                                    <th>CLV Decile</th>
+                                    <th>Churn Risk</th>
+                                    <th>SQS Score</th>
+                                    <th>Broadband Type</th>
+                                    <th>Current Speed</th>
+                                    <th>Device Model</th>
+                                    <th>Device Status</th>
+                                    <th>ISP</th>
+                                </tr>
+                            </thead>
+                            <tbody id="nba-table-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- JavaScript Modules (Load in order) -->
+    <script src="js/data-loader.js"></script>
+    <script src="js/charts.js"></script>
+    <script src="js/dashboard.js"></script>
+    <script src="js/nba.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
+

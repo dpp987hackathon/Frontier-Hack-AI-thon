@@ -1,0 +1,572 @@
+/**
+ * Next Best Action Module
+ * Handles NBA logic and visualization
+ */
+
+const NBA = {
+    nbaData: [],
+    filteredData: [],
+    currentFilter: 'all',
+    activeThreshold: 30, // days - matches dashboard default
+    
+    // Simulation parameters
+    simulationParams: {
+        takeRateUpgradeOnly: 3,
+        takeRateUpgradeDevice: 5,
+        licenseCostYearly: 6
+    },
+    
+    /**
+     * Initialize NBA module
+     */
+    init(nbaData) {
+        // Filter for Frontier network and active devices only
+        this.nbaData = this.filterFrontierActive(nbaData);
+        this.filteredData = this.nbaData;
+        this.setupControls();
+        this.updateNBAView();
+    },
+    
+    /**
+     * Filter data to only include Frontier network and active devices
+     */
+    filterFrontierActive(data) {
+        const currentDate = new Date();
+        const thresholdMs = this.activeThreshold * 24 * 60 * 60 * 1000;
+        
+        return data.filter(device => {
+            // Must be on Frontier network
+            const isFrontier = device.isp === 'Frontier Communications';
+            
+            // Must be active (last alive within threshold)
+            const isActive = (currentDate - device.last_alive_date) < thresholdMs;
+            
+            return isFrontier && isActive;
+        });
+    },
+    
+    /**
+     * Setup control event listeners
+     */
+    setupControls() {
+        const filterSelect = document.getElementById('nba-filter');
+        const customerSearchInput = document.getElementById('customer-search');
+        const serialSearchInput = document.getElementById('serial-search');
+        const downloadBtn = document.getElementById('download-csv');
+        
+        if (filterSelect) {
+            filterSelect.addEventListener('change', (e) => {
+                this.currentFilter = e.target.value;
+                this.filterData();
+                this.updateNBAView();
+            });
+        }
+        
+        if (customerSearchInput) {
+            customerSearchInput.addEventListener('input', (e) => {
+                this.searchData(e.target.value, 'customer');
+            });
+        }
+        
+        if (serialSearchInput) {
+            serialSearchInput.addEventListener('input', (e) => {
+                this.searchData(e.target.value, 'serial');
+            });
+        }
+        
+        if (downloadBtn) {
+            downloadBtn.addEventListener('click', () => {
+                this.downloadCSV();
+            });
+        }
+        
+        // Simulation controls
+        this.setupSimulationControls();
+    },
+    
+    /**
+     * Setup simulation control event listeners
+     */
+    setupSimulationControls() {
+        const takeRateUpgradeOnlySlider = document.getElementById('take-rate-upgrade-only');
+        const takeRateUpgradeDeviceSlider = document.getElementById('take-rate-upgrade-device');
+        const runSimButton = document.getElementById('run-simulation');
+        
+        if (takeRateUpgradeOnlySlider) {
+            takeRateUpgradeOnlySlider.addEventListener('input', (e) => {
+                this.simulationParams.takeRateUpgradeOnly = parseFloat(e.target.value);
+                document.getElementById('take-rate-upgrade-only-value').textContent = e.target.value;
+            });
+        }
+        
+        if (takeRateUpgradeDeviceSlider) {
+            takeRateUpgradeDeviceSlider.addEventListener('input', (e) => {
+                this.simulationParams.takeRateUpgradeDevice = parseFloat(e.target.value);
+                document.getElementById('take-rate-upgrade-device-value').textContent = e.target.value;
+            });
+        }
+        
+        if (runSimButton) {
+            runSimButton.addEventListener('click', () => {
+                this.runSimulation();
+            });
+        }
+    },
+    
+    /**
+     * Run the simulation based on current parameters
+     */
+    runSimulation() {
+        // Use yearly license cost ($6.00 per device per year)
+        const licenseCost = this.simulationParams.licenseCostYearly;
+        
+        // Group devices by customer to handle "upgrade all devices" scenario
+        const customerDevices = {};
+        this.nbaData.forEach(d => {
+            if (!customerDevices[d.customer_id]) {
+                customerDevices[d.customer_id] = [];
+            }
+            customerDevices[d.customer_id].push(d);
+        });
+        
+        // Count unique customers by action type (one recommendation per customer)
+        const customerActions = {};
+        Object.entries(customerDevices).forEach(([customerId, devices]) => {
+            // Take the first device's action as the customer action
+            const action = devices[0].next_best_action;
+            if (!customerActions[action]) {
+                customerActions[action] = [];
+            }
+            customerActions[action].push({ customerId, deviceCount: devices.length });
+        });
+        
+        // Calculate results for each action type
+        const results = {};
+        
+        // Speed upgrade only: If accepted, keeps devices and renews licenses; if not accepted, still needs licenses
+        if (customerActions['Speed upgrade only']) {
+            const eligible = customerActions['Speed upgrade only'];
+            const totalEligibleDevices = eligible.reduce((sum, c) => sum + c.deviceCount, 0);
+            const conversions = Math.round(eligible.length * this.simulationParams.takeRateUpgradeOnly / 100);
+            const avgDevicesPerCustomer = totalEligibleDevices / eligible.length;
+            
+            // ALL devices need licenses (whether customer accepts upgrade or not - they keep devices)
+            const devicesAffected = totalEligibleDevices;
+            
+            results['Speed upgrade only'] = {
+                eligible: eligible.length,
+                takeRate: this.simulationParams.takeRateUpgradeOnly,
+                conversions: conversions,
+                devicesAffected: devicesAffected,
+                licenseCostPerDevice: licenseCost,
+                totalLicenseCost: devicesAffected * licenseCost,
+                note: `${conversions} customers accept upgrade, but all ${devicesAffected} devices need licenses`
+            };
+        }
+        
+        // Speed upgrade + new device: If accepted, gets new devices (no license); if not accepted, needs licenses
+        if (customerActions['Speed upgrade + new device']) {
+            const eligible = customerActions['Speed upgrade + new device'];
+            const totalEligibleDevices = eligible.reduce((sum, c) => sum + c.deviceCount, 0);
+            const conversions = Math.round(eligible.length * this.simulationParams.takeRateUpgradeDevice / 100);
+            const nonConversions = eligible.length - conversions;
+            const avgDevicesPerCustomer = totalEligibleDevices / eligible.length;
+            
+            // Only non-converted customers need licenses (converted customers get new devices)
+            const devicesNeedingLicense = Math.round(nonConversions * avgDevicesPerCustomer);
+            const devicesGettingNew = Math.round(conversions * avgDevicesPerCustomer);
+            
+            results['Speed upgrade + new device'] = {
+                eligible: eligible.length,
+                takeRate: this.simulationParams.takeRateUpgradeDevice,
+                conversions: conversions,
+                devicesAffected: totalEligibleDevices,
+                devicesGettingNew: devicesGettingNew,
+                devicesNeedingLicense: devicesNeedingLicense,
+                licenseCostPerDevice: licenseCost,
+                totalLicenseCost: devicesNeedingLicense * licenseCost,
+                note: `${conversions} customers get new devices (${devicesGettingNew} devices), ${nonConversions} customers need licenses (${devicesNeedingLicense} devices)`
+            };
+        }
+        
+        // Ship new device: No license fee (new device shipped)
+        if (customerActions['Ship new device']) {
+            const eligible = customerActions['Ship new device'];
+            const conversions = eligible.length; // 100% take rate
+            const devicesAffected = eligible.reduce((sum, c) => sum + c.deviceCount, 0);
+            
+            results['Ship new device'] = {
+                eligible: eligible.length,
+                takeRate: 100,
+                conversions: conversions,
+                devicesAffected: devicesAffected,
+                licenseCostPerDevice: 0,
+                totalLicenseCost: 0,
+                note: 'New devices shipped to all customers, no license cost'
+            };
+        }
+        
+        // Keep as is: Count towards liability (need to maintain licenses)
+        if (customerActions['Keep as is']) {
+            const eligible = customerActions['Keep as is'];
+            const conversions = eligible.length;
+            const devicesAffected = eligible.reduce((sum, c) => sum + c.deviceCount, 0);
+            
+            results['Keep as is'] = {
+                eligible: eligible.length,
+                takeRate: 100,
+                conversions: conversions,
+                devicesAffected: devicesAffected,
+                licenseCostPerDevice: licenseCost,
+                totalLicenseCost: devicesAffected * licenseCost,
+                note: `All ${conversions} customers maintain devices, ${devicesAffected} devices need licenses`
+            };
+        }
+        
+        // Calculate totals
+        let totalLiability = 0;
+        let totalDevicesWithLicenses = 0;
+        let totalConversions = 0;
+        
+        Object.entries(results).forEach(([action, r]) => {
+            totalLiability += r.totalLicenseCost;
+            
+            // For devices needing licenses, use specific count if available (Speed upgrade + new device)
+            // Otherwise use devicesAffected if license cost > 0
+            if (r.devicesNeedingLicense !== undefined) {
+                totalDevicesWithLicenses += r.devicesNeedingLicense;
+            } else if (r.licenseCostPerDevice > 0) {
+                totalDevicesWithLicenses += r.devicesAffected;
+            }
+            
+            // Only count conversions for Speed Upgrade actions
+            if (action === 'Speed upgrade only' || action === 'Speed upgrade + new device') {
+                totalConversions += r.conversions;
+            }
+        });
+        
+        // Update UI
+        this.displaySimulationResults(results, totalConversions, totalLiability, totalDevicesWithLicenses, licenseCost);
+    },
+    
+    /**
+     * Display simulation results
+     */
+    displaySimulationResults(results, totalConversions, totalLiability, totalDevicesWithLicenses, licenseCost) {
+        // Show results section
+        const resultsSection = document.getElementById('simulation-results');
+        if (resultsSection) {
+            resultsSection.style.display = 'block';
+        }
+        
+        // Update main liability display
+        const totalLiabilityEl = document.getElementById('sim-total-liability');
+        const liabilityPeriodEl = document.getElementById('liability-period');
+        const liabilityDetailEl = document.getElementById('liability-detail');
+        
+        if (totalLiabilityEl) {
+            totalLiabilityEl.textContent = '$' + totalLiability.toLocaleString();
+        }
+        
+        if (liabilityPeriodEl) {
+            liabilityPeriodEl.textContent = 'Per Year';
+        }
+        
+        if (liabilityDetailEl) {
+            liabilityDetailEl.textContent = `${totalDevicesWithLicenses.toLocaleString()} devices requiring licenses`;
+        }
+        
+        // Update summary cards
+        const conversionsEl = document.getElementById('sim-conversions');
+        const devicesShippedEl = document.getElementById('sim-devices-shipped');
+        const licenseCostEl = document.getElementById('sim-license-cost');
+        const licensePeriodEl = document.getElementById('sim-license-period');
+        
+        if (conversionsEl) {
+            conversionsEl.textContent = totalConversions.toLocaleString();
+        }
+        
+        if (devicesShippedEl) {
+            devicesShippedEl.textContent = totalDevicesWithLicenses.toLocaleString();
+        }
+        
+        if (licenseCostEl) {
+            licenseCostEl.textContent = '$6.00';
+        }
+        
+        if (licensePeriodEl) {
+            licensePeriodEl.textContent = 'per device/year';
+        }
+        
+        // Update detail text
+        const conversionDetailEl = document.getElementById('sim-conversion-detail');
+        const deviceDetailEl = document.getElementById('sim-device-detail');
+        
+        if (conversionDetailEl) {
+            const uniqueCustomers = new Set(this.nbaData.map(d => d.customer_id)).size;
+            const conversionRate = ((totalConversions / uniqueCustomers) * 100).toFixed(2);
+            conversionDetailEl.textContent = `${conversionRate}% of ${uniqueCustomers.toLocaleString()} customers`;
+        }
+        
+        if (deviceDetailEl) {
+            deviceDetailEl.textContent = `License cost: $${totalLiability.toLocaleString()}`;
+        }
+        
+        // Update breakdown table
+        this.updateSimulationBreakdown(results);
+    },
+    
+    /**
+     * Update simulation breakdown table
+     */
+    updateSimulationBreakdown(results) {
+        const tbody = document.getElementById('simulation-breakdown');
+        if (!tbody) return;
+        
+        const rows = Object.entries(results).map(([action, data]) => {
+            // Build device info text
+            let deviceInfo = `${data.devicesAffected.toLocaleString()} total devices`;
+            if (data.devicesGettingNew !== undefined) {
+                deviceInfo = `${data.devicesGettingNew.toLocaleString()} get new, ${data.devicesNeedingLicense.toLocaleString()} need licenses`;
+            }
+            
+            return `
+                <tr>
+                    <td><strong>${action}</strong></td>
+                    <td>${data.eligible.toLocaleString()}</td>
+                    <td>${data.takeRate.toFixed(1)}%</td>
+                    <td><strong>${data.conversions.toLocaleString()}</strong></td>
+                    <td>
+                        $${data.licenseCostPerDevice.toFixed(2)} per device
+                        <br><small style="color: #666;">(${deviceInfo})</small>
+                    </td>
+                    <td>
+                        <strong>$${data.totalLicenseCost.toLocaleString()}</strong>
+                        <br><small style="color: #666;">${data.note}</small>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+        
+        tbody.innerHTML = rows;
+    },
+    
+    /**
+     * Filter data based on selected action
+     */
+    filterData() {
+        if (this.currentFilter === 'all') {
+            this.filteredData = this.nbaData;
+        } else {
+            this.filteredData = this.nbaData.filter(d => 
+                d.next_best_action === this.currentFilter
+            );
+        }
+    },
+    
+    /**
+     * Search data by customer ID or serial number
+     */
+    searchData(searchTerm, searchType) {
+        const customerSearchInput = document.getElementById('customer-search');
+        const serialSearchInput = document.getElementById('serial-search');
+        
+        const customerSearch = customerSearchInput ? customerSearchInput.value : '';
+        const serialSearch = serialSearchInput ? serialSearchInput.value : '';
+        
+        if (!customerSearch && !serialSearch) {
+            // No search terms, show filtered data based on action
+            this.filterData();
+        } else {
+            // Apply both search filters
+            this.filteredData = this.nbaData.filter(d => {
+                const matchesCustomer = !customerSearch || d.customer_id.toString().includes(customerSearch);
+                const matchesSerial = !serialSearch || (d.serial_number && d.serial_number.toString().includes(serialSearch));
+                return matchesCustomer && matchesSerial;
+            });
+        }
+        this.updateTable();
+    },
+    
+    /**
+     * Update all NBA visualizations
+     */
+    updateNBAView() {
+        this.updateStats();
+        this.updateDistributionChart();
+        this.updateTable();
+    },
+    
+    /**
+     * Update statistics cards
+     */
+    updateStats() {
+        // Count unique customers (not devices)
+        const uniqueCustomers = new Set(this.nbaData.map(d => d.customer_id));
+        const total = uniqueCustomers.size;
+        
+        // For filtered count, also count unique customers
+        const uniqueFilteredCustomers = new Set(this.filteredData.map(d => d.customer_id));
+        const filtered = uniqueFilteredCustomers.size;
+        
+        // Count by action type - group by unique customers
+        const customerDevices = {};
+        this.nbaData.forEach(d => {
+            if (!customerDevices[d.customer_id]) {
+                customerDevices[d.customer_id] = d.next_best_action;
+            }
+        });
+        
+        const actionCounts = {};
+        Object.values(customerDevices).forEach(action => {
+            actionCounts[action] = (actionCounts[action] || 0) + 1;
+        });
+        
+        // Get top 2 actions
+        const sortedActions = Object.entries(actionCounts)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 2);
+        
+        const totalEl = document.getElementById('total-customers');
+        const filteredEl = document.getElementById('filtered-customers');
+        const summaryEl = document.getElementById('action-summary');
+        
+        if (totalEl) totalEl.textContent = total.toLocaleString();
+        if (filteredEl) filteredEl.textContent = filtered.toLocaleString();
+        
+        if (summaryEl) {
+            const summaryHTML = sortedActions.map(([action, count]) => {
+                const percent = ((count / total) * 100).toFixed(1);
+                return `<div><strong>${action}:</strong> ${count.toLocaleString()} (${percent}%)</div>`;
+            }).join('');
+            summaryEl.innerHTML = summaryHTML;
+        }
+    },
+    
+    /**
+     * Update distribution chart - count by unique customers (not devices)
+     */
+    updateDistributionChart() {
+        // Group devices by customer to count unique customers
+        const customerDevices = {};
+        this.nbaData.forEach(d => {
+            if (!customerDevices[d.customer_id]) {
+                customerDevices[d.customer_id] = [];
+            }
+            customerDevices[d.customer_id].push(d);
+        });
+        
+        // Count unique customers by action type (one recommendation per customer)
+        const actionCounts = {};
+        Object.entries(customerDevices).forEach(([customerId, devices]) => {
+            // Take the first device's action as the customer action
+            const action = devices[0].next_best_action;
+            actionCounts[action] = (actionCounts[action] || 0) + 1;
+        });
+        
+        const chartData = Object.entries(actionCounts).map(([label, value]) => ({
+            label,
+            value
+        })).sort((a, b) => b.value - a.value);
+        
+        const colorMap = {
+            'Ship new device': '#dc3545',
+            'Speed upgrade + new device': '#28a745',
+            'Speed upgrade only': '#007bff',
+            'Keep as is': '#6c757d'
+        };
+        
+        Charts.drawBarChart('nba-distribution-chart', chartData, colorMap);
+    },
+    
+    /**
+     * Update customer table
+     */
+    updateTable() {
+        const tbody = document.getElementById('nba-table-body');
+        const showingCount = document.getElementById('showing-count');
+        
+        if (!tbody) return;
+        
+        const displayData = this.filteredData.slice(0, 100); // Show first 100
+        
+        const rows = displayData.map(d => {
+            const badgeClass = this.getActionBadgeClass(d.next_best_action);
+            return `
+                <tr>
+                    <td>${d.customer_id}</td>
+                    <td>${d.serial_number || 'N/A'}</td>
+                    <td><span class="badge ${badgeClass}">${d.next_best_action}</span></td>
+                    <td>${d.customer_segment}</td>
+                    <td>${d.clv_decile}</td>
+                    <td>${d.churn_risk}</td>
+                    <td>${d.sqs_score}</td>
+                    <td>${d.broadband_type}</td>
+                    <td>${d.current_bb_speed}</td>
+                    <td>${d.device_model}</td>
+                    <td>${d.device_status}</td>
+                    <td>${d.isp}</td>
+                </tr>
+            `;
+        }).join('');
+        
+        tbody.innerHTML = rows;
+        
+        // Update showing count
+        if (showingCount) {
+            showingCount.textContent = 
+                `Showing ${displayData.length} of ${this.filteredData.length} devices`;
+        }
+    },
+    
+    /**
+     * Get badge class for action type
+     */
+    getActionBadgeClass(action) {
+        const classMap = {
+            'Ship new device': 'urgent',
+            'Speed upgrade + new device': 'high-value',
+            'Speed upgrade only': 'medium',
+            'Keep as is': 'stable'
+        };
+        return classMap[action] || 'stable';
+    },
+    
+    /**
+     * Download filtered data as CSV
+     */
+    downloadCSV() {
+        const headers = [
+            'customer_id', 'serial_number', 'next_best_action', 'customer_segment', 'clv_decile',
+            'churn_risk', 'sqs_score', 'broadband_type', 'current_bb_speed',
+            'device_model', 'device_status', 'isp'
+        ];
+        
+        let csv = headers.join(',') + '\n';
+        
+        this.filteredData.forEach(row => {
+            const values = headers.map(header => {
+                const value = row[header] || '';
+                return `"${value}"`;
+            });
+            csv += values.join(',') + '\n';
+        });
+        
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+        const filterName = this.currentFilter === 'all' ? 'All_Actions' : this.currentFilter.replace(/ /g, '_');
+        a.href = url;
+        a.download = `next_best_action_${filterName}_${timestamp}.csv`;
+        
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+    }
+};
+
+window.NBA = NBA;
+

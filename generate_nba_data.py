@@ -8,39 +8,67 @@ from pathlib import Path
 
 def determine_next_best_action(row):
     """
-    Apply business rules to determine the next best action for a customer.
+    Apply business rules based on device capability vs. current speed.
+    
+    Device Capabilities (max speed supported):
+    - Eero 6: 1Gig
+    - Eero 6+: 1Gig
+    - Pro 6: 2Gig
+    - Pro 6e: 5Gig
     
     Rules:
-    1. Speed upgrade, no device upgrade: Fiber customer, CLV 1-3, SQS = 3
-    2. Speed Upgrade, new device upgrade: Fiber customer, CLV 7-10, segment is Aspirational Adopters or Peak Performers
-    3. Keep As Is: SQS = 3, Churn = 0, segment is Budget Balancers, Foolproof Followers, or Settled Simplifiers
-    4. Ship new device: SQS = 1, Churn = 1, segment = Aspirational Adopters
+    1. Speed > Device Capability → Ship new device (customer speed exceeds device)
+    2. Speed = Device Capability → Speed upgrade + new device (device at max)
+    3. Speed < Device Capability → Speed upgrade only (device underutilized)
+    4. Otherwise → Keep as is
     """
     
-    # Rule 4: Ship new device (highest priority for at-risk customers)
-    if row['sqs_score'] == 1 and row['churn_risk'] == 1 and row['customer_segment'] == 'Aspirational Adopters':
-        return 'Ship new device'
+    # Define device max capabilities
+    device_capabilities = {
+        'Eero 6': '1Gig',
+        'Eero 6+': '1Gig',
+        'Pro 6': '2Gig',
+        'Pro 6e': '5Gig'
+    }
     
-    # Rule 2: Speed Upgrade + new device upgrade
-    if (row['broadband_type'] == 'Fiber' and 
-        row['clv_decile'] >= 7 and row['clv_decile'] <= 10 and 
-        row['customer_segment'] in ['Aspirational Adopters', 'Peak Performers']):
-        return 'Speed upgrade + new device'
+    # Define speed tier ordering for comparison
+    speed_order = {
+        '50Mbps': 1,
+        '100Mbps': 2,
+        '200Mbps': 3,
+        '500Mbps': 4,
+        '1Gig': 5,
+        '2Gig': 6,
+        '5Gig': 7
+    }
     
-    # Rule 1: Speed upgrade, no device upgrade
-    if (row['broadband_type'] == 'Fiber' and 
-        row['clv_decile'] >= 1 and row['clv_decile'] <= 3 and 
-        row['sqs_score'] == 3):
-        return 'Speed upgrade only'
+    device_model = row['device_model']
+    current_speed = row['current_bb_speed']
     
-    # Rule 3: Keep As Is
-    if (row['sqs_score'] == 3 and 
-        row['churn_risk'] == 0 and 
-        row['customer_segment'] in ['Budget Balancers', 'Foolproof Followers', 'Settled Simplifiers']):
+    # Only process if device is in our known list
+    if device_model not in device_capabilities:
         return 'Keep as is'
     
-    # Default: No specific action
-    return 'No action recommended'
+    device_max_speed = device_capabilities[device_model]
+    
+    # Get numeric comparison values
+    current_speed_value = speed_order.get(current_speed, 0)
+    device_max_value = speed_order.get(device_max_speed, 0)
+    
+    # Rule 1: Customer speed exceeds device capability → Ship new device
+    if current_speed_value > device_max_value:
+        return 'Ship new device'
+    
+    # Rule 2: Customer speed equals device max capability → Speed upgrade + new device
+    elif current_speed_value == device_max_value:
+        return 'Speed upgrade + new device'
+    
+    # Rule 3: Customer speed below device capability → Speed upgrade only
+    elif current_speed_value < device_max_value:
+        return 'Speed upgrade only'
+    
+    # Rule 4: Default
+    return 'Keep as is'
 
 def main():
     print("=" * 60)
