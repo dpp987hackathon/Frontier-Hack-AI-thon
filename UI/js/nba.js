@@ -8,6 +8,9 @@ const NBA = {
     filteredData: [],
     currentFilter: 'all',
     activeThreshold: 30, // days - matches dashboard default
+    originalDeviceCount: 0, // Store original count before filtering
+    originalData: [], // Store original unfiltered data
+    totalActiveDeviceCount: 0, // Store total active devices count
     
     // Simulation parameters
     simulationParams: {
@@ -20,11 +23,31 @@ const NBA = {
      * Initialize NBA module
      */
     init(nbaData) {
+        // Store original data and device count before filtering
+        this.originalData = nbaData;
+        this.originalDeviceCount = nbaData.length;
+        
+        // Calculate total active devices (both Frontier and Non-Frontier)
+        this.totalActiveDeviceCount = this.countActiveDevices(nbaData);
+        
         // Filter for Frontier network and active devices only
         this.nbaData = this.filterFrontierActive(nbaData);
         this.filteredData = this.nbaData;
         this.setupControls();
         this.updateNBAView();
+    },
+    
+    /**
+     * Count total active devices across all ISPs
+     */
+    countActiveDevices(data) {
+        const currentDate = new Date();
+        const thresholdMs = this.activeThreshold * 24 * 60 * 60 * 1000;
+        
+        return data.filter(device => {
+            const isActive = (currentDate - device.last_alive_date) < thresholdMs;
+            return isActive;
+        }).length;
     },
     
     /**
@@ -241,7 +264,7 @@ const NBA = {
             
             // Only count conversions for Speed Upgrade actions
             if (action === 'Speed upgrade only' || action === 'Speed upgrade + new device') {
-                totalConversions += r.conversions;
+            totalConversions += r.conversions;
             }
         });
         
@@ -276,40 +299,81 @@ const NBA = {
             liabilityDetailEl.textContent = `${totalDevicesWithLicenses.toLocaleString()} devices requiring licenses`;
         }
         
-        // Update summary cards
-        const conversionsEl = document.getElementById('sim-conversions');
-        const devicesShippedEl = document.getElementById('sim-devices-shipped');
-        const licenseCostEl = document.getElementById('sim-license-cost');
-        const licensePeriodEl = document.getElementById('sim-license-period');
+        // Update current liability card (before simulation actions)
+        const currentLiabilityEl = document.getElementById('sim-current-liability');
+        const currentLiabilityDetailEl = document.getElementById('current-liability-detail');
         
-        if (conversionsEl) {
-            conversionsEl.textContent = totalConversions.toLocaleString();
+        // Use total active devices (both Frontier and Non-Frontier)
+        const currentLiability = this.totalActiveDeviceCount * licenseCost;
+        
+        if (currentLiabilityEl) {
+            currentLiabilityEl.textContent = '$' + currentLiability.toLocaleString();
         }
         
-        if (devicesShippedEl) {
-            devicesShippedEl.textContent = totalDevicesWithLicenses.toLocaleString();
+        if (currentLiabilityDetailEl) {
+            currentLiabilityDetailEl.textContent = `${this.totalActiveDeviceCount.toLocaleString()} devices requiring licenses`;
         }
         
-        if (licenseCostEl) {
-            licenseCostEl.textContent = '$6.00';
+        // Update liability change card
+        const liabilityChangeCard = document.getElementById('liability-change-card');
+        const liabilityChangePercentEl = document.getElementById('liability-change-percent');
+        const liabilityChangeDetailEl = document.getElementById('liability-change-detail');
+        
+        if (currentLiability > 0) {
+            const change = totalLiability - currentLiability;
+            const percentChange = ((change / currentLiability) * 100).toFixed(1);
+            const absChange = Math.abs(change);
+            
+            // Update the main number (dollar amount saved/increased)
+            if (liabilityChangePercentEl) {
+                const sign = change > 0 ? '+' : '-';
+                liabilityChangePercentEl.textContent = `${sign}$${absChange.toLocaleString()}`;
+            }
+            
+            // Update the detail text (percentage)
+            if (liabilityChangeDetailEl) {
+                const sign = change > 0 ? '+' : '';
+                if (change < 0) {
+                    liabilityChangeDetailEl.textContent = `${sign}${percentChange}% reduction annually`;
+                } else if (change > 0) {
+                    liabilityChangeDetailEl.textContent = `${sign}${percentChange}% increase in costs`;
+                } else {
+                    liabilityChangeDetailEl.textContent = `0% - No change from baseline`;
+                }
+            }
+            
+            // Update card styling based on change
+            if (liabilityChangeCard) {
+                if (change < 0) {
+                    // Savings - use muted teal gradient
+                    liabilityChangeCard.style.background = 'linear-gradient(135deg, #28a745 0%, #218838 100%)';
+                    liabilityChangeCard.style.boxShadow = '0 8px 20px rgba(40, 167, 69, 0.25)';
+                } else if (change > 0) {
+                    // Increase - use muted orange gradient
+                    liabilityChangeCard.style.background = 'linear-gradient(135deg, #fd7e14 0%, #e66a0a 100%)';
+                    liabilityChangeCard.style.boxShadow = '0 8px 20px rgba(253, 126, 20, 0.25)';
+                } else {
+                    // No change - use gray gradient
+                    liabilityChangeCard.style.background = 'linear-gradient(135deg, #6c757d 0%, #5a6268 100%)';
+                    liabilityChangeCard.style.boxShadow = '0 8px 20px rgba(108, 117, 125, 0.25)';
+                }
+            }
         }
         
-        if (licensePeriodEl) {
-            licensePeriodEl.textContent = 'per device/year';
-        }
-        
-        // Update detail text
+        // Update revenue increase card
+        const revenueIncreaseEl = document.getElementById('sim-revenue-increase');
         const conversionDetailEl = document.getElementById('sim-conversion-detail');
-        const deviceDetailEl = document.getElementById('sim-device-detail');
+        
+        // Calculate annual revenue increase: conversions × $15/month × 12 months
+        const monthlyRevenuePerConversion = 15;
+        const annualRevenueIncrease = totalConversions * monthlyRevenuePerConversion * 12;
+        
+        if (revenueIncreaseEl) {
+            revenueIncreaseEl.textContent = '$' + annualRevenueIncrease.toLocaleString();
+        }
         
         if (conversionDetailEl) {
-            const uniqueCustomers = new Set(this.nbaData.map(d => d.customer_id)).size;
-            const conversionRate = ((totalConversions / uniqueCustomers) * 100).toFixed(2);
-            conversionDetailEl.textContent = `${conversionRate}% of ${uniqueCustomers.toLocaleString()} customers`;
-        }
-        
-        if (deviceDetailEl) {
-            deviceDetailEl.textContent = `License cost: $${totalLiability.toLocaleString()}`;
+            conversionDetailEl.textContent = `${totalConversions.toLocaleString()} expected conversions`;
         }
         
         // Update breakdown table
@@ -392,9 +456,44 @@ const NBA = {
      * Update all NBA visualizations
      */
     updateNBAView() {
+        this.updateLiabilityComparison();
         this.updateStats();
         this.updateDistributionChart();
         this.updateTable();
+    },
+    
+    /**
+     * Update liability comparison section
+     */
+    updateLiabilityComparison() {
+        const licenseCostPerDevice = 6;
+        
+        // Original liability: All devices before filtering
+        const originalLiability = this.originalDeviceCount * licenseCostPerDevice;
+        
+        // Current liability: Total Active devices (both Frontier and Non-Frontier active)
+        const currentLiability = this.totalActiveDeviceCount * licenseCostPerDevice;
+        
+        // Calculate savings
+        const savings = originalLiability - currentLiability;
+        const savingsPercentage = originalLiability > 0 ? ((savings / originalLiability) * 100).toFixed(1) : 0;
+        
+        // Update DOM elements
+        const originalLiabilityEl = document.getElementById('original-liability');
+        const originalDeviceCountEl = document.getElementById('original-device-count');
+        const currentLiabilityEl = document.getElementById('current-liability');
+        const currentDeviceCountEl = document.getElementById('current-device-count');
+        const savingsEl = document.getElementById('liability-savings');
+        const savingsPercentageEl = document.getElementById('savings-percentage');
+        
+        if (originalLiabilityEl) originalLiabilityEl.textContent = '$' + originalLiability.toLocaleString();
+        if (originalDeviceCountEl) originalDeviceCountEl.textContent = `${this.originalDeviceCount.toLocaleString()} devices × $6.00/year`;
+        
+        if (currentLiabilityEl) currentLiabilityEl.textContent = '$' + currentLiability.toLocaleString();
+        if (currentDeviceCountEl) currentDeviceCountEl.textContent = `${this.totalActiveDeviceCount.toLocaleString()} devices × $6.00/year`;
+        
+        if (savingsEl) savingsEl.textContent = '$' + savings.toLocaleString();
+        if (savingsPercentageEl) savingsPercentageEl.textContent = `${savingsPercentage}% reduction`;
     },
     
     /**

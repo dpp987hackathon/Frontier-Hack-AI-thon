@@ -5,7 +5,13 @@
 
 const Dashboard = {
     deviceData: null,
+    filteredData: null,
     activeThreshold: 30,
+    filters: {
+        networkActivity: null,  // e.g., 'Frontier Active'
+        deviceModel: null,      // e.g., 'Eero 6'
+        deviceStatus: null      // e.g., 'Provisioned'
+    },
     
     /**
      * Initialize the dashboard
@@ -13,6 +19,7 @@ const Dashboard = {
     init(deviceData) {
         console.log('Dashboard.init called with deviceData:', deviceData ? deviceData.length : 'undefined');
         this.deviceData = deviceData;
+        this.filteredData = deviceData;
         this.setupControls();
         this.updateDashboard();
     },
@@ -25,26 +32,92 @@ const Dashboard = {
     },
     
     /**
-     * Calculate statistics based on current threshold
+     * Apply current filters to device data
+     */
+    applyFilters() {
+        console.log('applyFilters called. Current filters:', this.filters);
+        const currentDate = new Date();
+        const thresholdMs = this.activeThreshold * 24 * 60 * 60 * 1000;
+        
+        this.filteredData = this.deviceData.filter(device => {
+            // Filter by network activity status
+            if (this.filters.networkActivity) {
+                const isFrontier = device.isp === 'Frontier Communications';
+                const isActive = (currentDate - device.last_alive_date) < thresholdMs;
+                
+                const status = isFrontier 
+                    ? (isActive ? 'Frontier Active' : 'Frontier Inactive')
+                    : (isActive ? 'Non-Frontier Active' : 'Non-Frontier Inactive');
+                
+                if (status !== this.filters.networkActivity) return false;
+            }
+            
+            // Filter by device model
+            if (this.filters.deviceModel && device.device_model !== this.filters.deviceModel) {
+                return false;
+            }
+            
+            // Filter by device status
+            if (this.filters.deviceStatus && device.device_status !== this.filters.deviceStatus) {
+                return false;
+            }
+            
+            return true;
+        });
+        
+        console.log('Filtered data:', this.filteredData.length, 'devices (from', this.deviceData.length, 'total)');
+    },
+    
+    /**
+     * Clear a specific filter
+     */
+    clearFilter(filterType) {
+        this.filters[filterType] = null;
+        this.applyFilters();
+        this.updateDashboard();
+    },
+    
+    /**
+     * Set a filter and update dashboard
+     */
+    setFilter(filterType, value) {
+        console.log('setFilter called:', filterType, value);
+        // If clicking the same filter, clear it (toggle)
+        if (this.filters[filterType] === value) {
+            console.log('Clearing filter:', filterType);
+            this.clearFilter(filterType);
+        } else {
+            console.log('Setting filter:', filterType, '=', value);
+            this.filters[filterType] = value;
+            this.applyFilters();
+            this.updateDashboard();
+        }
+    },
+    
+    /**
+     * Calculate statistics based on current threshold and filtered data
      */
     calculateStats() {
         const currentDate = new Date();
         const thresholdMs = this.activeThreshold * 24 * 60 * 60 * 1000;
         
         const stats = {
-            total: this.deviceData.length,
+            total: this.filteredData.length,
             frontier: 0,
             nonFrontier: 0,
             frontierActive: 0,
             frontierInactive: 0,
             nonFrontierActive: 0,
-            nonFrontierInactive: 0
+            nonFrontierInactive: 0,
+            deviceModels: {},
+            deviceStatuses: {}
         };
         
-        this.deviceData.forEach(device => {
+        this.filteredData.forEach(device => {
             const isFrontier = device.isp === 'Frontier Communications';
             const isActive = (currentDate - device.last_alive_date) < thresholdMs;
             
+            // Network activity stats
             if (isFrontier) {
                 stats.frontier++;
                 if (isActive) {
@@ -60,6 +133,14 @@ const Dashboard = {
                     stats.nonFrontierInactive++;
                 }
             }
+            
+            // Device model distribution
+            const model = device.device_model || 'Unknown';
+            stats.deviceModels[model] = (stats.deviceModels[model] || 0) + 1;
+            
+            // Device status distribution
+            const status = device.device_status || 'Unknown';
+            stats.deviceStatuses[status] = (stats.deviceStatuses[status] || 0) + 1;
         });
         
         return stats;
@@ -81,21 +162,21 @@ const Dashboard = {
     updateStatCards(stats) {
         console.log('Dashboard.updateStatCards called with stats:', stats);
         const totalEl = document.getElementById('total-devices');
-        const targetEl = document.getElementById('target-devices');
-        const frontierEl = document.getElementById('frontier-devices');
-        const nonFrontierEl = document.getElementById('non-frontier-devices');
+        const totalActiveEl = document.getElementById('total-active-devices');
         const liabilityEl = document.getElementById('expected-liability');
         
+        // Total devices (all devices)
         if (totalEl) totalEl.textContent = stats.total.toLocaleString();
-        if (targetEl) targetEl.textContent = stats.frontierActive.toLocaleString();
-        if (frontierEl) frontierEl.textContent = stats.frontier.toLocaleString();
-        if (nonFrontierEl) nonFrontierEl.textContent = stats.nonFrontier.toLocaleString();
         
-        // Calculate expected liability if no action is taken: Total devices × $6/device/year
+        // Total active devices (Frontier Active + Non-Frontier Active)
+        const totalActive = stats.frontierActive + stats.nonFrontierActive;
+        if (totalActiveEl) totalActiveEl.textContent = totalActive.toLocaleString();
+        
+        // Calculate expected liability based on total active devices: Total active × $6/device/year
         if (liabilityEl) {
             const licenseCostPerDevice = 6;
-            const expectedLiability = stats.total * licenseCostPerDevice;
-            console.log('Expected liability calculation:', stats.total, '×', licenseCostPerDevice, '=', expectedLiability);
+            const expectedLiability = totalActive * licenseCostPerDevice;
+            console.log('Expected liability calculation:', totalActive, '×', licenseCostPerDevice, '=', expectedLiability);
             liabilityEl.textContent = '$' + expectedLiability.toLocaleString();
         } else {
             console.warn('Expected liability element not found');
@@ -152,22 +233,53 @@ const Dashboard = {
     },
     
     /**
-     * Update pie charts
+     * Update interactive pie charts
      */
     updateCharts(stats) {
-        // Frontier chart
-        const frontierData = [
-            { label: 'Active', value: stats.frontierActive },
-            { label: 'Inactive', value: stats.frontierInactive }
+        // 1. Network & Activity Status Chart
+        const networkActivityData = [
+            { label: 'Frontier Active', value: stats.frontierActive },
+            { label: 'Frontier Inactive', value: stats.frontierInactive },
+            { label: 'Non-Frontier Active', value: stats.nonFrontierActive },
+            { label: 'Non-Frontier Inactive', value: stats.nonFrontierInactive }
         ];
-        Charts.drawPieChart('frontier-chart', frontierData, ['#38ef7d', '#ee0979']);
+        // Softer, more muted colors for better readability
+        const networkColors = ['#4CAF50', '#F44336', '#2196F3', '#9C27B0'];
+        Charts.drawInteractivePieChart(
+            'network-activity-chart', 
+            networkActivityData, 
+            networkColors,
+            (label) => this.setFilter('networkActivity', label),
+            this.filters.networkActivity
+        );
         
-        // Non-Frontier chart
-        const nonFrontierData = [
-            { label: 'Active', value: stats.nonFrontierActive },
-            { label: 'Inactive', value: stats.nonFrontierInactive }
-        ];
-        Charts.drawPieChart('non-frontier-chart', nonFrontierData, ['#38ef7d', '#ee0979']);
+        // 2. Device Model Chart
+        const modelData = Object.entries(stats.deviceModels)
+            .map(([label, value]) => ({ label, value }))
+            .sort((a, b) => b.value - a.value);
+        // Professional material design colors with better contrast
+        const modelColors = ['#3F51B5', '#673AB7', '#E91E63', '#FF5722', '#00BCD4', '#009688'];
+        Charts.drawInteractivePieChart(
+            'device-model-chart', 
+            modelData, 
+            modelColors,
+            (label) => this.setFilter('deviceModel', label),
+            this.filters.deviceModel
+        );
+        
+        // 3. Device Status Bar Chart (Full Width)
+        const statusData = Object.entries(stats.deviceStatuses)
+            .map(([label, value]) => ({ label, value }))
+            .sort((a, b) => b.value - a.value);
+        // Balanced color palette with good visibility
+        const statusColors = ['#4CAF50', '#00BCD4', '#FF9800', '#E91E63', '#9C27B0', '#607D8B'];
+        Charts.drawInteractiveBarChart(
+            'device-status-chart', 
+            statusData, 
+            statusColors,
+            (label) => this.setFilter('deviceStatus', label),
+            this.filters.deviceStatus
+        );
     }
 };
 
