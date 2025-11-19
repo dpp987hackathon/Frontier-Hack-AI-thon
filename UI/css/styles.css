@@ -7,7 +7,7 @@
 
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #141928 0%, #1a2030 100%);
     color: #333;
     min-height: 100vh;
 }
@@ -28,7 +28,7 @@ header {
 }
 
 h1 {
-    color: #667eea;
+    color: #FF0037;
     font-size: 2.5em;
     text-align: center;
 }
@@ -71,7 +71,7 @@ h3 {
 }
 
 .tab.active {
-    background: #667eea;
+    background: #FF0037;
     color: white;
 }
 
@@ -93,7 +93,7 @@ h3 {
     text-align: center;
     padding: 50px;
     font-size: 1.5em;
-    color: #667eea;
+    color: #FF0037;
 }
 
 .error {

@@ -99,22 +99,35 @@ const App = {
         }
         
         const vizData = this.data.vizData;
+        const licenseCostPerDevice = 6; // $6 per device per year
         
-        // Calculate statistics
-        const quarterCount = vizData.length;
-        const totalActive = d3.sum(vizData, d => d.active);
-        const totalInactive = d3.sum(vizData, d => d.inactive);
-        const avgActive = Math.round(totalActive / quarterCount);
-        const avgInactive = Math.round(totalInactive / quarterCount);
+        // Find Q1 2027 data
+        const q1_2027 = vizData.find(d => d.year === 2027 && d.quarterNum === 1);
         
-        // Update stat cards
-        const quarterCountEl = document.getElementById('prediction-quarter-count');
-        const avgActiveEl = document.getElementById('prediction-avg-active');
-        const avgInactiveEl = document.getElementById('prediction-avg-inactive');
+        // Find all 2027 quarters
+        const all_2027 = vizData.filter(d => d.year === 2027);
         
-        if (quarterCountEl) quarterCountEl.textContent = quarterCount.toLocaleString();
-        if (avgActiveEl) avgActiveEl.textContent = avgActive.toLocaleString();
-        if (avgInactiveEl) avgInactiveEl.textContent = avgInactive.toLocaleString();
+        // Calculate Q1 2027 License Fee Liability
+        const q1_2027_active = q1_2027 ? q1_2027.active : 0;
+        const q1_2027_liability = q1_2027_active * licenseCostPerDevice;
+        
+        // Calculate Total 2027 License Fee Liability
+        const total_2027_active = d3.sum(all_2027, d => d.active);
+        const total_2027_liability = total_2027_active * licenseCostPerDevice;
+        
+        // Update Q1 2027 stat card
+        const q1LiabilityEl = document.getElementById('prediction-q1-2027-liability');
+        const q1DevicesEl = document.getElementById('prediction-q1-2027-devices');
+        
+        if (q1LiabilityEl) q1LiabilityEl.textContent = '$' + q1_2027_liability.toLocaleString();
+        if (q1DevicesEl) q1DevicesEl.textContent = `${q1_2027_active.toLocaleString()} active devices`;
+        
+        // Update Total 2027 stat card
+        const totalLiabilityEl = document.getElementById('prediction-2027-total-liability');
+        const totalDevicesEl = document.getElementById('prediction-2027-total-devices');
+        
+        if (totalLiabilityEl) totalLiabilityEl.textContent = '$' + total_2027_liability.toLocaleString();
+        if (totalDevicesEl) totalDevicesEl.textContent = `${total_2027_active.toLocaleString()} active devices (${all_2027.length} quarters)`;
         
         // Draw stacked bar chart by quarter
         Charts.drawStackedBarChart('prediction-chart', vizData);
@@ -122,7 +135,7 @@ const App = {
         // Populate inactive devices by quarter table
         this.populateInactiveTable(vizData);
         
-        console.log(`✓ Prediction tab initialized with ${quarterCount} quarters`);
+        console.log(`✓ Prediction tab initialized - Q1 2027: ${q1_2027_active.toLocaleString()} devices, Total 2027: ${total_2027_active.toLocaleString()} devices`);
     },
     
     /**
@@ -314,11 +327,35 @@ const App = {
                 NBA.updateNBAView();
                 break;
             case 'prediction':
-                // Refresh the prediction visualizations
+                // Refresh the prediction visualizations and KPI cards
                 if (this.data && this.data.vizData) {
-                    Charts.drawStackedBarChart('prediction-chart', this.data.vizData);
-                    this.populateInactiveTable(this.data.vizData);
-                    console.log('Prediction visualizations refreshed');
+                    const vizData = this.data.vizData;
+                    const licenseCostPerDevice = 6;
+                    
+                    // Recalculate Q1 2027 and Total 2027 liabilities
+                    const q1_2027 = vizData.find(d => d.year === 2027 && d.quarterNum === 1);
+                    const all_2027 = vizData.filter(d => d.year === 2027);
+                    
+                    const q1_2027_active = q1_2027 ? q1_2027.active : 0;
+                    const q1_2027_liability = q1_2027_active * licenseCostPerDevice;
+                    const total_2027_active = d3.sum(all_2027, d => d.active);
+                    const total_2027_liability = total_2027_active * licenseCostPerDevice;
+                    
+                    // Update KPI cards
+                    const q1LiabilityEl = document.getElementById('prediction-q1-2027-liability');
+                    const q1DevicesEl = document.getElementById('prediction-q1-2027-devices');
+                    const totalLiabilityEl = document.getElementById('prediction-2027-total-liability');
+                    const totalDevicesEl = document.getElementById('prediction-2027-total-devices');
+                    
+                    if (q1LiabilityEl) q1LiabilityEl.textContent = '$' + q1_2027_liability.toLocaleString();
+                    if (q1DevicesEl) q1DevicesEl.textContent = `${q1_2027_active.toLocaleString()} active devices`;
+                    if (totalLiabilityEl) totalLiabilityEl.textContent = '$' + total_2027_liability.toLocaleString();
+                    if (totalDevicesEl) totalDevicesEl.textContent = `${total_2027_active.toLocaleString()} active devices (${all_2027.length} quarters)`;
+                    
+                    // Refresh visualizations
+                    Charts.drawStackedBarChart('prediction-chart', vizData);
+                    this.populateInactiveTable(vizData);
+                    console.log('Prediction tab refreshed - KPIs and visualizations updated');
                 }
                 break;
             case 'actuals':

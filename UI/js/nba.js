@@ -11,6 +11,7 @@ const NBA = {
     originalDeviceCount: 0, // Store original count before filtering
     originalData: [], // Store original unfiltered data
     totalActiveDeviceCount: 0, // Store total active devices count
+    frontierActiveDeviceCount: 0, // Store Frontier Active devices count
     
     // Simulation parameters
     simulationParams: {
@@ -33,6 +34,10 @@ const NBA = {
         // Filter for Frontier network and active devices only
         this.nbaData = this.filterFrontierActive(nbaData);
         this.filteredData = this.nbaData;
+        
+        // Store Frontier Active device count
+        this.frontierActiveDeviceCount = this.nbaData.length;
+        
         this.setupControls();
         this.updateNBAView();
     },
@@ -327,15 +332,15 @@ const NBA = {
         const currentLiabilityEl = document.getElementById('sim-current-liability');
         const currentLiabilityDetailEl = document.getElementById('current-liability-detail');
         
-        // Use total active devices (both Frontier and Non-Frontier)
-        const currentLiability = this.totalActiveDeviceCount * licenseCost;
+        // Use Frontier Active devices only
+        const currentLiability = this.frontierActiveDeviceCount * licenseCost;
         
         if (currentLiabilityEl) {
             currentLiabilityEl.textContent = '$' + currentLiability.toLocaleString();
         }
         
         if (currentLiabilityDetailEl) {
-            currentLiabilityDetailEl.textContent = `${this.totalActiveDeviceCount.toLocaleString()} devices requiring licenses`;
+            currentLiabilityDetailEl.textContent = `${this.frontierActiveDeviceCount.toLocaleString()} devices requiring licenses`;
         }
         
         // Update liability change card
@@ -495,8 +500,8 @@ const NBA = {
         // Original liability: All devices before filtering
         const originalLiability = this.originalDeviceCount * licenseCostPerDevice;
         
-        // Current liability: Total Active devices (both Frontier and Non-Frontier active)
-        const currentLiability = this.totalActiveDeviceCount * licenseCostPerDevice;
+        // Current liability: Frontier Active devices only
+        const currentLiability = this.frontierActiveDeviceCount * licenseCostPerDevice;
         
         // Calculate savings
         const savings = originalLiability - currentLiability;
@@ -514,7 +519,7 @@ const NBA = {
         if (originalDeviceCountEl) originalDeviceCountEl.textContent = `${this.originalDeviceCount.toLocaleString()} devices × $6.00/year`;
         
         if (currentLiabilityEl) currentLiabilityEl.textContent = '$' + currentLiability.toLocaleString();
-        if (currentDeviceCountEl) currentDeviceCountEl.textContent = `${this.totalActiveDeviceCount.toLocaleString()} devices × $6.00/year`;
+        if (currentDeviceCountEl) currentDeviceCountEl.textContent = `${this.frontierActiveDeviceCount.toLocaleString()} devices × $6.00/year`;
         
         if (savingsEl) savingsEl.textContent = '$' + savings.toLocaleString();
         if (savingsPercentageEl) savingsPercentageEl.textContent = `${savingsPercentage}% reduction`;
@@ -545,25 +550,11 @@ const NBA = {
             actionCounts[action] = (actionCounts[action] || 0) + 1;
         });
         
-        // Get top 2 actions
-        const sortedActions = Object.entries(actionCounts)
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, 2);
-        
         const totalEl = document.getElementById('total-customers');
         const filteredEl = document.getElementById('filtered-customers');
-        const summaryEl = document.getElementById('action-summary');
         
         if (totalEl) totalEl.textContent = total.toLocaleString();
         if (filteredEl) filteredEl.textContent = filtered.toLocaleString();
-        
-        if (summaryEl) {
-            const summaryHTML = sortedActions.map(([action, count]) => {
-                const percent = ((count / total) * 100).toFixed(1);
-                return `<div><strong>${action}:</strong> ${count.toLocaleString()} (${percent}%)</div>`;
-            }).join('');
-            summaryEl.innerHTML = summaryHTML;
-        }
     },
     
     /**

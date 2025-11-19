@@ -194,34 +194,39 @@ const Dashboard = {
                     ${stats.total.toLocaleString()}
                 </div>
             </div>
-            <div style="text-align: center; font-size: 2em; color: #999;">↓</div>
-            <div class="tree-level text-center">
-                <div class="tree-node frontier">
-                    <strong>Frontier</strong><br>
-                    ${stats.frontier.toLocaleString()}
+            <div style="text-align: center; font-size: 2em; color: #999; margin: 10px 0;">↓</div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; max-width: 900px; margin: 0 auto;">
+                <!-- Frontier Column -->
+                <div style="display: flex; flex-direction: column; align-items: stretch;">
+                    <div class="tree-node frontier" style="margin-bottom: 15px;">
+                        <strong>Frontier</strong><br>
+                        ${stats.frontier.toLocaleString()}
+                    </div>
+                    <div style="text-align: center; font-size: 1.5em; color: #999; margin: 5px 0;">↓</div>
+                    <div class="tree-node active target" style="margin-bottom: 10px;">
+                        <strong>🎯 Active</strong><br>
+                        ${stats.frontierActive.toLocaleString()}
+                    </div>
+                    <div class="tree-node inactive">
+                        <strong>Inactive</strong><br>
+                        ${stats.frontierInactive.toLocaleString()}
+                    </div>
                 </div>
-                <div class="tree-node">
-                    <strong>Non-Frontier</strong><br>
-                    ${stats.nonFrontier.toLocaleString()}
-                </div>
-            </div>
-            <div style="text-align: center; font-size: 2em; color: #999;">↓</div>
-            <div class="tree-level text-center">
-                <div class="tree-node active target">
-                    <strong>🎯 Frontier Active</strong><br>
-                    ${stats.frontierActive.toLocaleString()}
-                </div>
-                <div class="tree-node inactive">
-                    <strong>Frontier Inactive</strong><br>
-                    ${stats.frontierInactive.toLocaleString()}
-                </div>
-                <div class="tree-node active">
-                    <strong>Non-Frontier Active</strong><br>
-                    ${stats.nonFrontierActive.toLocaleString()}
-                </div>
-                <div class="tree-node inactive">
-                    <strong>Non-Frontier Inactive</strong><br>
-                    ${stats.nonFrontierInactive.toLocaleString()}
+                <!-- Non-Frontier Column -->
+                <div style="display: flex; flex-direction: column; align-items: stretch;">
+                    <div class="tree-node" style="margin-bottom: 15px; background: linear-gradient(135deg, #757575 0%, #616161 100%); color: white;">
+                        <strong>Non-Frontier</strong><br>
+                        ${stats.nonFrontier.toLocaleString()}
+                    </div>
+                    <div style="text-align: center; font-size: 1.5em; color: #999; margin: 5px 0;">↓</div>
+                    <div class="tree-node active" style="margin-bottom: 10px;">
+                        <strong>Active</strong><br>
+                        ${stats.nonFrontierActive.toLocaleString()}
+                    </div>
+                    <div class="tree-node inactive">
+                        <strong>Inactive</strong><br>
+                        ${stats.nonFrontierInactive.toLocaleString()}
+                    </div>
                 </div>
             </div>
         `;

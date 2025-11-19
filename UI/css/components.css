@@ -31,7 +31,7 @@
     appearance: none;
     width: 20px;
     height: 20px;
-    background: #667eea;
+    background: #FF0037;
     cursor: pointer;
     border-radius: 50%;
 }
@@ -39,7 +39,7 @@
 .control-group input[type="range"]::-moz-range-thumb {
     width: 20px;
     height: 20px;
-    background: #667eea;
+    background: #FF0037;
     cursor: pointer;
     border-radius: 50%;
     border: none;
@@ -67,7 +67,7 @@
 .control-group input:focus,
 .control-group select:focus {
     outline: none;
-    border-color: #667eea;
+    border-color: #FF0037;
 }
 
 /* Statistics Cards */
@@ -79,7 +79,7 @@
 }
 
 .stat-card {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #FF0037 0%, #c70029 100%);
     color: white;
     padding: 20px;
     border-radius: 10px;
@@ -161,7 +161,7 @@
 }
 
 .tree-node.frontier {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #FF0037 0%, #c70029 100%);
     color: white;
 }
 
@@ -189,7 +189,7 @@
 }
 
 .data-table thead {
-    background: #667eea;
+    background: #FF0037;
     color: white;
 }
 
@@ -251,14 +251,14 @@
 }
 
 .btn-primary {
-    background: #667eea;
+    background: #FF0037;
     color: white;
 }
 
 .btn-primary:hover {
-    background: #5568d3;
+    background: #d9002f;
     transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 4px 8px rgba(255, 0, 55, 0.3);
 }
 
 .btn-success {
